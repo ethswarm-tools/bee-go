@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/ethersphere/bee-go"
+	"github.com/ethswarm-tools/bee-go"
 )
 
 func main() {

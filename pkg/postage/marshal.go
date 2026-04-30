@@ -1,7 +1,7 @@
 package postage
 
 import (
-	"github.com/ethersphere/bee-go/pkg/swarm"
+	"github.com/ethswarm-tools/bee-go/pkg/swarm"
 )
 
 // MarshaledStampLength is the byte length of a marshaled stamp:

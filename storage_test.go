@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	bee "github.com/ethersphere/bee-go"
-	"github.com/ethersphere/bee-go/pkg/swarm"
+	bee "github.com/ethswarm-tools/bee-go"
+	"github.com/ethswarm-tools/bee-go/pkg/swarm"
 )
 
 // fakeBee mounts the minimum endpoints BuyStorage / GetStorageCost need:

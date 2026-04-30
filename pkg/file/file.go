@@ -10,8 +10,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ethersphere/bee-go/pkg/api"
-	"github.com/ethersphere/bee-go/pkg/swarm"
+	"github.com/ethswarm-tools/bee-go/pkg/api"
+	"github.com/ethswarm-tools/bee-go/pkg/swarm"
 )
 
 // UploadFile uploads a single file via POST /bzz. name is the displayed

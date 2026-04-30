@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"testing"
 
-	"github.com/ethersphere/bee-go/pkg/swarm"
+	"github.com/ethswarm-tools/bee-go/pkg/swarm"
 )
 
 // Single-chunk file (≤ ChunkSize bytes): root must equal the CAC.

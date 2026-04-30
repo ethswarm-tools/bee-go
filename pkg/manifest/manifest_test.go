@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ethersphere/bee-go/pkg/swarm"
+	"github.com/ethswarm-tools/bee-go/pkg/swarm"
 )
 
 func mustRef(t *testing.T, hex string) swarm.Reference {

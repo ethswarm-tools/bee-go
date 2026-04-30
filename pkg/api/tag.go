@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/ethersphere/bee-go/pkg/swarm"
+	"github.com/ethswarm-tools/bee-go/pkg/swarm"
 )
 
 // Tag represents a Swarm tag.

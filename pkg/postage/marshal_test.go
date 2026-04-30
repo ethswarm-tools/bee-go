@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethersphere/bee-go/pkg/postage"
-	"github.com/ethersphere/bee-go/pkg/swarm"
+	"github.com/ethswarm-tools/bee-go/pkg/postage"
+	"github.com/ethswarm-tools/bee-go/pkg/swarm"
 )
 
 func TestMarshalStamp_RoundTrip(t *testing.T) {

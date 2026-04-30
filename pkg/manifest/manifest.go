@@ -17,7 +17,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/ethersphere/bee-go/pkg/swarm"
+	"github.com/ethswarm-tools/bee-go/pkg/swarm"
 )
 
 // Type bitfield used in fork records.

@@ -11,8 +11,8 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/ethersphere/bee-go/pkg/api"
-	"github.com/ethersphere/bee-go/pkg/swarm"
+	"github.com/ethswarm-tools/bee-go/pkg/api"
+	"github.com/ethswarm-tools/bee-go/pkg/swarm"
 )
 
 // CreateFeedManifest creates a feed manifest for the (owner, topic) pair.

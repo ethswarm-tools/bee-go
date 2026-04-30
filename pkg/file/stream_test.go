@@ -13,8 +13,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/ethersphere/bee-go/pkg/file"
-	"github.com/ethersphere/bee-go/pkg/swarm"
+	"github.com/ethswarm-tools/bee-go/pkg/file"
+	"github.com/ethswarm-tools/bee-go/pkg/swarm"
 )
 
 // HashCollectionEntries should produce a stable, content-addressed

@@ -8,6 +8,11 @@ version bump.
 
 ## [Unreleased]
 
+## [1.0.0] — 2026-04-30
+
+First stable release. SemVer compatibility promise is now in effect for
+everything exported from the top-level module and `pkg/...`.
+
 ### Added
 
 - GitHub Actions CI workflow (`.github/workflows/ci.yml`) running
@@ -26,6 +31,9 @@ version bump.
 
 ### Changed
 
+- **BREAKING:** Module path renamed `github.com/ethersphere/bee-go` →
+  `github.com/ethswarm-tools/bee-go` to match the canonical GitHub
+  repository. Update imports accordingly.
 - **BREAKING:** `Tag.Uid` → `Tag.UID`, `UploadResult.TagUid` →
   `TagUID`, `FileHeaders.TagUid` → `TagUID`. JSON wire tags are
   unchanged (`"uid"`).

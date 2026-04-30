@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/ethersphere/bee-go/pkg/swarm"
+	"github.com/ethswarm-tools/bee-go/pkg/swarm"
 )
 
 // Stamper represents a client-side postage stamper.

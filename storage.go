@@ -4,9 +4,9 @@ import (
 	"context"
 	"math/big"
 
-	"github.com/ethersphere/bee-go/pkg/api"
-	"github.com/ethersphere/bee-go/pkg/postage"
-	"github.com/ethersphere/bee-go/pkg/swarm"
+	"github.com/ethswarm-tools/bee-go/pkg/api"
+	"github.com/ethswarm-tools/bee-go/pkg/postage"
+	"github.com/ethswarm-tools/bee-go/pkg/swarm"
 )
 
 // Network identifies the chain the Bee node runs on. Used to pick the

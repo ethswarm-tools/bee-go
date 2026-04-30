@@ -21,11 +21,11 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	bee "github.com/ethersphere/bee-go"
-	"github.com/ethersphere/bee-go/pkg/api"
-	"github.com/ethersphere/bee-go/pkg/file"
-	"github.com/ethersphere/bee-go/pkg/gsoc"
-	"github.com/ethersphere/bee-go/pkg/swarm"
+	bee "github.com/ethswarm-tools/bee-go"
+	"github.com/ethswarm-tools/bee-go/pkg/api"
+	"github.com/ethswarm-tools/bee-go/pkg/file"
+	"github.com/ethswarm-tools/bee-go/pkg/gsoc"
+	"github.com/ethswarm-tools/bee-go/pkg/swarm"
 )
 
 var (

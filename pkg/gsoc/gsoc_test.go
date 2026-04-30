@@ -11,9 +11,9 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/ethersphere/bee-go/pkg/file"
-	"github.com/ethersphere/bee-go/pkg/gsoc"
-	"github.com/ethersphere/bee-go/pkg/swarm"
+	"github.com/ethswarm-tools/bee-go/pkg/file"
+	"github.com/ethswarm-tools/bee-go/pkg/gsoc"
+	"github.com/ethswarm-tools/bee-go/pkg/swarm"
 )
 
 func TestSOCAddress_Deterministic(t *testing.T) {

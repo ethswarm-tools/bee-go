@@ -11,8 +11,8 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/ethersphere/bee-go/pkg/pss"
-	"github.com/ethersphere/bee-go/pkg/swarm"
+	"github.com/ethswarm-tools/bee-go/pkg/pss"
+	"github.com/ethswarm-tools/bee-go/pkg/swarm"
 )
 
 // pssWSServer accepts a /pss/subscribe/{topic} WS upgrade and pushes the

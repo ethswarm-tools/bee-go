@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ethersphere/bee-go/pkg/api"
-	"github.com/ethersphere/bee-go/pkg/swarm"
+	"github.com/ethswarm-tools/bee-go/pkg/api"
+	"github.com/ethswarm-tools/bee-go/pkg/swarm"
 )
 
 func TestService_Grantee(t *testing.T) {

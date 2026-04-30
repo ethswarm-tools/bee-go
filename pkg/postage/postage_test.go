@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ethersphere/bee-go/pkg/postage"
-	"github.com/ethersphere/bee-go/pkg/swarm"
+	"github.com/ethswarm-tools/bee-go/pkg/postage"
+	"github.com/ethswarm-tools/bee-go/pkg/swarm"
 )
 
 const testBatchHex = "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"

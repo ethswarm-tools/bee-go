@@ -10,7 +10,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/ethersphere/bee-go/pkg/swarm"
+	"github.com/ethswarm-tools/bee-go/pkg/swarm"
 )
 
 // Pinned versions of the Bee node + API that this client targets. Used

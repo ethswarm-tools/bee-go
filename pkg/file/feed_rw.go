@@ -3,8 +3,8 @@ package file
 import (
 	"context"
 
-	"github.com/ethersphere/bee-go/pkg/api"
-	"github.com/ethersphere/bee-go/pkg/swarm"
+	"github.com/ethswarm-tools/bee-go/pkg/api"
+	"github.com/ethswarm-tools/bee-go/pkg/swarm"
 )
 
 // FeedReader reads updates from a feed identified by (Owner, Topic).

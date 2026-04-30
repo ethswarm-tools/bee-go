@@ -6,8 +6,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/ethersphere/bee-go"
-	"github.com/ethersphere/bee-go/pkg/swarm"
+	"github.com/ethswarm-tools/bee-go"
+	"github.com/ethswarm-tools/bee-go/pkg/swarm"
 )
 
 func main() {

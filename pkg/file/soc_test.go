@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethersphere/bee-go/pkg/file"
-	"github.com/ethersphere/bee-go/pkg/swarm"
+	"github.com/ethswarm-tools/bee-go/pkg/file"
+	"github.com/ethswarm-tools/bee-go/pkg/swarm"
 )
 
 func TestService_SOC(t *testing.T) {

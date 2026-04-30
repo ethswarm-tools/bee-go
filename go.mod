@@ -1,4 +1,4 @@
-module github.com/ethersphere/bee-go
+module github.com/ethswarm-tools/bee-go
 
 go 1.25.4
 

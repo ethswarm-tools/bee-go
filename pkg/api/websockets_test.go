@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ethersphere/bee-go/pkg/api"
+	"github.com/ethswarm-tools/bee-go/pkg/api"
 	"github.com/gorilla/websocket"
 )
 

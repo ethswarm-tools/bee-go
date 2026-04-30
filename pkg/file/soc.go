@@ -10,8 +10,8 @@ import (
 	"net/url"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethersphere/bee-go/pkg/api"
-	"github.com/ethersphere/bee-go/pkg/swarm"
+	"github.com/ethswarm-tools/bee-go/pkg/api"
+	"github.com/ethswarm-tools/bee-go/pkg/swarm"
 )
 
 // UploadSOC uploads a Single Owner Chunk. The owner / id / signature triple

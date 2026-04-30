@@ -19,9 +19,9 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/ethersphere/bee-go/pkg/api"
-	"github.com/ethersphere/bee-go/pkg/file"
-	"github.com/ethersphere/bee-go/pkg/swarm"
+	"github.com/ethswarm-tools/bee-go/pkg/api"
+	"github.com/ethswarm-tools/bee-go/pkg/file"
+	"github.com/ethswarm-tools/bee-go/pkg/swarm"
 )
 
 // Service handles GSOC operations. Construct via NewService.

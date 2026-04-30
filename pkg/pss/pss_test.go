@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ethersphere/bee-go/pkg/pss"
-	"github.com/ethersphere/bee-go/pkg/swarm"
+	"github.com/ethswarm-tools/bee-go/pkg/pss"
+	"github.com/ethswarm-tools/bee-go/pkg/swarm"
 )
 
 func TestService_PssSend(t *testing.T) {

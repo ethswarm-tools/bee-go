@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ethersphere/bee-go/pkg/debug"
+	"github.com/ethswarm-tools/bee-go/pkg/debug"
 )
 
 func TestService_Staking(t *testing.T) {

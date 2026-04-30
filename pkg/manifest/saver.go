@@ -3,7 +3,7 @@ package manifest
 import (
 	"context"
 
-	"github.com/ethersphere/bee-go/pkg/swarm"
+	"github.com/ethswarm-tools/bee-go/pkg/swarm"
 )
 
 // ChunkUploader is anything that can upload a single chunk's full

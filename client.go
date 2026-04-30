@@ -5,13 +5,13 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/ethersphere/bee-go/pkg/api"
-	"github.com/ethersphere/bee-go/pkg/debug"
-	"github.com/ethersphere/bee-go/pkg/file"
-	"github.com/ethersphere/bee-go/pkg/gsoc"
-	"github.com/ethersphere/bee-go/pkg/postage"
-	"github.com/ethersphere/bee-go/pkg/pss"
-	"github.com/ethersphere/bee-go/pkg/swarm"
+	"github.com/ethswarm-tools/bee-go/pkg/api"
+	"github.com/ethswarm-tools/bee-go/pkg/debug"
+	"github.com/ethswarm-tools/bee-go/pkg/file"
+	"github.com/ethswarm-tools/bee-go/pkg/gsoc"
+	"github.com/ethswarm-tools/bee-go/pkg/postage"
+	"github.com/ethswarm-tools/bee-go/pkg/pss"
+	"github.com/ethswarm-tools/bee-go/pkg/swarm"
 	"github.com/gorilla/websocket"
 )
 

@@ -7,7 +7,7 @@
 ## Installation
 
 ```bash
-go get github.com/ethersphere/bee-go
+go get github.com/ethswarm-tools/bee-go
 ```
 
 ## Quickstart
@@ -21,8 +21,8 @@ import (
 	"log"
 	"strings"
 
-	bee "github.com/ethersphere/bee-go"
-	"github.com/ethersphere/bee-go/pkg/swarm"
+	bee "github.com/ethswarm-tools/bee-go"
+	"github.com/ethswarm-tools/bee-go/pkg/swarm"
 )
 
 func main() {

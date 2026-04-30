@@ -6,8 +6,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/ethersphere/bee-go/pkg/manifest"
-	"github.com/ethersphere/bee-go/pkg/swarm"
+	"github.com/ethswarm-tools/bee-go/pkg/manifest"
+	"github.com/ethswarm-tools/bee-go/pkg/swarm"
 )
 
 // SaveRecursively must visit every internal node and the file forks,
