@@ -55,11 +55,23 @@ func CreateSOC(id []byte, data []byte, signer *ecdsa.PrivateKey) (*SingleOwnerCh
 	}, nil
 }
 
-// Sign hashes data with keccak256 and signs the digest with privateKey,
-// returning the 65-byte [R || S || V] signature with V in {0,1}.
+// Sign signs data using the Ethereum signed-message scheme that Bee
+// expects for SOC signatures:
+//
+//	digest = keccak256("\x19Ethereum Signed Message:\n32" || keccak256(data))
+//
+// matching bee-js PrivateKey.sign. Returns the 65-byte [R || S || V]
+// signature with V normalized to {27,28}.
 func Sign(data []byte, privateKey *ecdsa.PrivateKey) ([]byte, error) {
-	hash := crypto.Keccak256(data)
-	return crypto.Sign(hash, privateKey)
+	digest := ethSignedMessageDigest(data)
+	sig, err := crypto.Sign(digest, privateKey)
+	if err != nil {
+		return nil, err
+	}
+	if sig[64] < 27 {
+		sig[64] += 27
+	}
+	return sig, nil
 }
 
 // UnmarshalSingleOwnerChunk parses the wire form of a SOC chunk —
@@ -87,8 +99,16 @@ func UnmarshalSingleOwnerChunk(data []byte, expectedAddress Reference) (*SingleO
 		return nil, err
 	}
 
-	digest := crypto.Keccak256(append(append([]byte{}, id...), cacAddr...))
-	pubKey, err := crypto.SigToPub(digest, sig)
+	// Bee signs the eth-signed-message digest of (identifier || cacAddress);
+	// reproduce that digest to recover the owner's public key.
+	digest := ethSignedMessageDigest(append(append([]byte{}, id...), cacAddr...))
+	// Bee stores V∈{27,28}; go-ethereum's SigToPub expects V∈{0,1}.
+	// Denormalize on a copy so we don't mutate the caller's bytes.
+	recoverSig := append([]byte{}, sig...)
+	if recoverSig[64] >= 27 {
+		recoverSig[64] -= 27
+	}
+	pubKey, err := crypto.SigToPub(digest, recoverSig)
 	if err != nil {
 		return nil, fmt.Errorf("recover SOC owner: %w", err)
 	}

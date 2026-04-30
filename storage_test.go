@@ -3,6 +3,7 @@ package bee_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -23,7 +24,8 @@ func fakeBee(t *testing.T, currentPrice uint64) *httptest.Server {
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"chainTip":     1000,
 				"block":        1000,
-				"currentPrice": currentPrice,
+				"totalAmount":  "0",
+				"currentPrice": fmt.Sprintf("%d", currentPrice),
 			})
 		case strings.HasPrefix(r.URL.Path, "/stamps/") && r.Method == http.MethodPost:
 			w.WriteHeader(http.StatusCreated)

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"math/big"
 	"net/http"
 	"net/url"
 	"strings"
@@ -400,11 +401,41 @@ func (s *Service) NodeInfo(ctx context.Context) (*NodeInfo, error) {
 	return &info, nil
 }
 
-// ChainStateResponse represents the chain state.
+// ChainStateResponse represents the chain state. TotalAmount and
+// CurrentPrice arrive as bigint-encoded strings on the wire.
 type ChainStateResponse struct {
+	ChainTip     uint64
+	Block        uint64
+	TotalAmount  *big.Int
+	CurrentPrice uint64
+}
+
+type chainStateJSON struct {
 	ChainTip     uint64 `json:"chainTip"`
 	Block        uint64 `json:"block"`
-	CurrentPrice uint64 `json:"currentPrice"`
+	TotalAmount  string `json:"totalAmount"`
+	CurrentPrice string `json:"currentPrice"`
+}
+
+func (c *ChainStateResponse) UnmarshalJSON(b []byte) error {
+	var v chainStateJSON
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	c.ChainTip = v.ChainTip
+	c.Block = v.Block
+	if v.TotalAmount != "" {
+		c.TotalAmount = new(big.Int)
+		c.TotalAmount.SetString(v.TotalAmount, 10)
+	}
+	if v.CurrentPrice != "" {
+		bi := new(big.Int)
+		if _, ok := bi.SetString(v.CurrentPrice, 10); !ok {
+			return swarm.NewBeeArgumentError("invalid currentPrice", v.CurrentPrice)
+		}
+		c.CurrentPrice = bi.Uint64()
+	}
+	return nil
 }
 
 // ChainState retrieves the current chain state.

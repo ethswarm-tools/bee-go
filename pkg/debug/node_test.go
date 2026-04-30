@@ -120,7 +120,7 @@ func TestService_ChainState(t *testing.T) {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		w.Write([]byte(`{"chainTip": 100, "block": 99, "currentPrice": 50}`))
+		w.Write([]byte(`{"chainTip": 100, "block": 99, "totalAmount": "543004038265", "currentPrice": "50"}`))
 	}))
 	defer s.Close()
 
@@ -131,7 +131,10 @@ func TestService_ChainState(t *testing.T) {
 		t.Fatalf("ChainState error = %v", err)
 	}
 	if got.ChainTip != 100 || got.Block != 99 || got.CurrentPrice != 50 {
-		t.Errorf("ChainState got = %v", got)
+		t.Errorf("ChainState got = %+v", got)
+	}
+	if got.TotalAmount == nil || got.TotalAmount.String() != "543004038265" {
+		t.Errorf("TotalAmount = %v", got.TotalAmount)
 	}
 }
 
