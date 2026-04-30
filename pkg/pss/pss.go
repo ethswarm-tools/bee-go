@@ -6,21 +6,31 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+
+	"github.com/ethersphere/bee-go/pkg/swarm"
 )
 
 // PssSend sends a PSS message.
-// topic: 32-byte hex string
-// target: 2-byte prefix string (e.g. "1234") or address
-// recipient: public key (optional? No, API says `POST /pss/send/:topic/:target`)
-// Actually `target` is the routing target.
-func (s *Service) PssSend(ctx context.Context, topic string, target string, data io.Reader, recipient string) error {
-	path := fmt.Sprintf("pss/send/%s/%s", topic, target)
+//
+//   - topic: 32-byte topic; use swarm.TopicFromString to derive from a label.
+//   - target: routing prefix as hex (e.g. "1234"); not a full address. Bee uses
+//     this as a partial XOR target so the network gossip can reach the
+//     recipient without revealing the full address.
+//   - recipient: optional uncompressed public key for end-to-end encryption.
+//     Pass the zero PublicKey to send unencrypted.
+func (s *Service) PssSend(ctx context.Context, topic swarm.Topic, target string, data io.Reader, recipient swarm.PublicKey) error {
+	path := fmt.Sprintf("pss/send/%s/%s", topic.Hex(), target)
 	u := s.baseURL.ResolveReference(&url.URL{Path: path})
-	q := u.Query()
-	if recipient != "" {
-		q.Set("recipient", recipient)
+	if !recipient.IsZero() {
+		// Bee accepts the recipient public key as compressed hex.
+		compressed, err := recipient.CompressedHex()
+		if err != nil {
+			return fmt.Errorf("compress recipient: %w", err)
+		}
+		q := u.Query()
+		q.Set("recipient", compressed)
+		u.RawQuery = q.Encode()
 	}
-	u.RawQuery = q.Encode()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u.String(), data)
 	if err != nil {
@@ -33,12 +43,8 @@ func (s *Service) PssSend(ctx context.Context, topic string, target string, data
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		// PSS send returns 201 Created usually? Or 200? Bee API docs says 200 OK.
-		// Let's accept 2xx.
-		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			return fmt.Errorf("pss send failed with status: %d", resp.StatusCode)
-		}
+	if err := swarm.CheckResponse(resp); err != nil {
+		return err
 	}
 	return nil
 }

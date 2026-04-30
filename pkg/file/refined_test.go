@@ -5,10 +5,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/ethersphere/bee-go/pkg/api"
 	"github.com/ethersphere/bee-go/pkg/file"
+	"github.com/ethersphere/bee-go/pkg/swarm"
 )
 
 func TestRefinedFeatures(t *testing.T) {
@@ -24,18 +26,21 @@ func TestRefinedFeatures(t *testing.T) {
 				return
 			}
 			w.WriteHeader(http.StatusCreated)
-			w.Write([]byte(`{"reference": "ref1"}`))
+			w.Write([]byte(`{"reference": "` + strings.Repeat("aa", 32) + `"}`))
 		}))
 		defer s.Close()
 
 		u, _ := url.Parse(s.URL)
 		c := file.NewService(u, http.DefaultClient)
-		opts := &api.UploadOptions{
-			Pin:     true,
-			Encrypt: true,
+		opts := &api.FileUploadOptions{
+			UploadOptions: api.UploadOptions{
+				Pin:     api.BoolPtr(true),
+				Encrypt: api.BoolPtr(true),
+			},
 		}
 
-		_, err := c.UploadFile(context.Background(), "batch1", nil, "name", "content-type", opts)
+		batch := swarm.MustBatchID(strings.Repeat("bb", 32))
+		_, err := c.UploadFile(context.Background(), batch, nil, "name", "content-type", opts)
 		if err != nil {
 			t.Logf("UploadFile returned error: %v", err)
 		}

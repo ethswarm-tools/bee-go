@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -15,13 +14,13 @@ import (
 	"github.com/ethersphere/bee-go/pkg/swarm"
 )
 
-// UploadFile uploads a file to Swarm.
-// contentType is optional, defaults to application/octet-stream.
-// name is optional, used for the Swarm-Tag-Name header or similar if supported,
-// or just for context. Bee API uses `name` query param for simple uploads sometimes
-// but strictly `POST /bzz` expects raw body or multipart.
-// Bee-JS uses `POST /bzz` for `uploadFile`.
-func (s *Service) UploadFile(ctx context.Context, batchID string, data io.Reader, name string, contentType string, opts *api.UploadOptions) (swarm.Reference, error) {
+// UploadFile uploads a single file via POST /bzz. name is the displayed
+// filename (sent as the `name` query parameter); contentType becomes the
+// stored MIME type and may be overridden by FileUploadOptions.ContentType.
+//
+// If contentType is empty and opts does not specify one, application/
+// octet-stream is used.
+func (s *Service) UploadFile(ctx context.Context, batchID swarm.BatchID, data io.Reader, name string, contentType string, opts *api.FileUploadOptions) (api.UploadResult, error) {
 	u := s.baseURL.ResolveReference(&url.URL{Path: "bzz"})
 	q := u.Query()
 	if name != "" {
@@ -31,153 +30,124 @@ func (s *Service) UploadFile(ctx context.Context, batchID string, data io.Reader
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u.String(), data)
 	if err != nil {
-		return swarm.Reference{}, err
+		return api.UploadResult{}, err
 	}
-
-	req.Header.Set("Swarm-Postage-Batch-Id", batchID)
 	if contentType == "" {
 		contentType = "application/octet-stream"
 	}
 	req.Header.Set("Content-Type", contentType)
-
-	if opts != nil {
-		opts.ApplyToRequest(req)
-	}
+	api.PrepareFileUploadHeaders(req, batchID, opts)
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
-		return swarm.Reference{}, err
+		return api.UploadResult{}, err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		return swarm.Reference{}, fmt.Errorf("upload file failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return api.UploadResult{}, err
 	}
 
 	var res struct {
 		Reference string `json:"reference"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
-		return swarm.Reference{}, err
+		return api.UploadResult{}, err
 	}
-
-	return swarm.Reference{Value: res.Reference}, nil
+	return api.ReadUploadResult(res.Reference, resp.Header)
 }
 
-// DownloadFile downloads a file from Swarm.
-// Returns the data reader and the content type.
-func (s *Service) DownloadFile(ctx context.Context, ref swarm.Reference) (io.ReadCloser, string, error) {
-	u := s.baseURL.ResolveReference(&url.URL{Path: "bzz/" + ref.Value})
+// DownloadFile downloads a file from Bee. Returns the body reader, the
+// parsed file headers (Content-Disposition / Content-Type / Swarm-Tag-Uid)
+// and any error. The caller must close the reader.
+func (s *Service) DownloadFile(ctx context.Context, ref swarm.Reference, opts *api.DownloadOptions) (io.ReadCloser, api.FileHeaders, error) {
+	u := s.baseURL.ResolveReference(&url.URL{Path: "bzz/" + ref.Hex()})
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
-		return nil, "", err
+		return nil, api.FileHeaders{}, err
 	}
+	api.PrepareDownloadHeaders(req, opts)
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
-		return nil, "", err
+		return nil, api.FileHeaders{}, err
 	}
-
-	if resp.StatusCode != http.StatusOK {
+	if err := swarm.CheckResponse(resp); err != nil {
 		resp.Body.Close()
-		return nil, "", fmt.Errorf("download file failed with status: %d", resp.StatusCode)
+		return nil, api.FileHeaders{}, err
 	}
-
-	return resp.Body, resp.Header.Get("Content-Type"), nil
+	return resp.Body, api.ParseFileHeaders(resp.Header), nil
 }
 
-// UploadCollection uploads a directory to Swarm as a tar stream.
-// dir is the local path to the directory.
-// indexFile is optional (e.g., "index.html").
-func (s *Service) UploadCollection(ctx context.Context, batchID string, dir string, indexFile string, opts *api.UploadOptions) (swarm.Reference, error) {
-	// We need to stream the directory as a TAR.
-	// Since http.Request body needs to be a Reader, we can use io.Pipe,
-	// but we must run the TAR writing in a goroutine.
+// UploadCollection uploads a directory tree as a tar stream via POST /bzz.
+// indexFile (e.g. "index.html") is the document served when the collection
+// root is requested; opts may further specify an error document.
+func (s *Service) UploadCollection(ctx context.Context, batchID swarm.BatchID, dir string, opts *api.CollectionUploadOptions) (api.UploadResult, error) {
 	pr, pw := io.Pipe()
-
 	go func() {
 		tw := tar.NewWriter(pw)
 		err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
 			}
-			// Skip the root directory itself to avoid recursive mess if not handled well,
-			// or just standard tar behavior. Standard tar includes it.
-			// Bee expects relative paths in the tar.
-			relPath, err := filepath.Rel(dir, path)
+			rel, err := filepath.Rel(dir, path)
 			if err != nil {
 				return err
 			}
-			if relPath == "." {
+			if rel == "." {
 				return nil
 			}
-
 			header, err := tar.FileInfoHeader(info, info.Name())
 			if err != nil {
 				return err
 			}
-			header.Name = relPath
-
+			header.Name = rel
 			if err := tw.WriteHeader(header); err != nil {
 				return err
 			}
-
-			if !info.IsDir() {
-				f, err := os.Open(path)
-				if err != nil {
-					return err
-				}
-				defer f.Close()
-				if _, err := io.Copy(tw, f); err != nil {
-					return err
-				}
+			if info.IsDir() {
+				return nil
 			}
-			return nil
+			f, err := os.Open(path)
+			if err != nil {
+				return err
+			}
+			defer f.Close()
+			_, err = io.Copy(tw, f)
+			return err
 		})
 		if err != nil {
 			pw.CloseWithError(err)
-		} else {
-			tw.Close()
-			pw.Close()
+			return
 		}
+		tw.Close()
+		pw.Close()
 	}()
 
 	u := s.baseURL.ResolveReference(&url.URL{Path: "bzz"})
-	q := u.Query()
-	if indexFile != "" {
-		q.Set("index", indexFile)
-	}
-	u.RawQuery = q.Encode()
-
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u.String(), pr)
 	if err != nil {
-		return swarm.Reference{}, err
+		return api.UploadResult{}, err
 	}
-
-	req.Header.Set("Swarm-Postage-Batch-Id", batchID)
 	req.Header.Set("Content-Type", "application/x-tar")
 	req.Header.Set("Swarm-Collection", "true")
-
-	if opts != nil {
-		opts.ApplyToRequest(req)
-	}
+	api.PrepareCollectionUploadHeaders(req, batchID, opts)
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
-		return swarm.Reference{}, err
+		return api.UploadResult{}, err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		return swarm.Reference{}, fmt.Errorf("upload collection failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return api.UploadResult{}, err
 	}
 
 	var res struct {
 		Reference string `json:"reference"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
-		return swarm.Reference{}, err
+		return api.UploadResult{}, err
 	}
-
-	return swarm.Reference{Value: res.Reference}, nil
+	return api.ReadUploadResult(res.Reference, resp.Header)
 }

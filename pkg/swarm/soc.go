@@ -8,7 +8,9 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
-// SingleOwnerChunk represents a single owner chunk.
+// SingleOwnerChunk is a chunk addressed by (owner || identifier) instead of
+// content hash. The owner signs (identifier || cacAddress), where cacAddress
+// is the BMT root of (span || payload).
 type SingleOwnerChunk struct {
 	ID        []byte
 	Signature []byte
@@ -17,32 +19,22 @@ type SingleOwnerChunk struct {
 	Payload   []byte
 }
 
-// CreateSOC creates a SingleOwnerChunk.
-// id: 32 bytes identifier
-// data: payload data
-// signer: private key
+// CreateSOC builds a SingleOwnerChunk for the given identifier and payload,
+// signed by signer. The span is encoded little-endian per Swarm chunk format
+// (matches bee-js cac.ts setUint64(..., true)).
 func CreateSOC(id []byte, data []byte, signer *ecdsa.PrivateKey) (*SingleOwnerChunk, error) {
-	// 1. Calculate content address (CAC)
-	span := make([]byte, 8)
-	binary.LittleEndian.PutUint64(span, uint64(len(data))) // Swarm uses LittleEndian for span in chunks? No, updated bee checks say LittleEndian.
-	// Wait, Bee uses LittleEndian for span in chunks logic usually.
-	// Bee-js `Span` says `binary.numberToUint64(..., 'LE')` is default? No, 'BE' in previous feed code I saw?
-	// Let's check feed.ts again. "Binary.numberToUint64(BigInt(Math.floor(at)), 'BE')" is for timestamp.
-	// Chunk span... bee-js cac.ts: `span.setUint64(0, BigInt(length), true)` (true for LittleEndian).
-
-	spanLen := int64(len(data))
-	if spanLen > ChunkSize {
+	if int64(len(data)) > ChunkSize {
 		return nil, fmt.Errorf("payload too large")
 	}
-	binary.LittleEndian.PutUint64(span, uint64(spanLen))
 
-	cacData := append(span, data...)
-	cacAddress, err := CalculateChunkAddress(cacData)
+	span := make([]byte, 8)
+	binary.LittleEndian.PutUint64(span, uint64(len(data)))
+
+	cacAddress, err := CalculateChunkAddress(append(span, data...))
 	if err != nil {
 		return nil, err
 	}
 
-	// 2. Sign (ID + CAC Address)
 	toSign := make([]byte, 0, 32+32)
 	toSign = append(toSign, id...)
 	toSign = append(toSign, cacAddress...)
@@ -63,12 +55,9 @@ func CreateSOC(id []byte, data []byte, signer *ecdsa.PrivateKey) (*SingleOwnerCh
 	}, nil
 }
 
-// Sign signs the data with the private key.
+// Sign hashes data with keccak256 and signs the digest with privateKey,
+// returning the 65-byte [R || S || V] signature with V in {0,1}.
 func Sign(data []byte, privateKey *ecdsa.PrivateKey) ([]byte, error) {
 	hash := crypto.Keccak256(data)
-	signature, err := crypto.Sign(hash, privateKey)
-	if err != nil {
-		return nil, err
-	}
-	return signature, nil
+	return crypto.Sign(hash, privateKey)
 }

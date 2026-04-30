@@ -7,6 +7,8 @@ import (
 	"math/big"
 	"net/http"
 	"net/url"
+
+	"github.com/ethersphere/bee-go/pkg/swarm"
 )
 
 // Balance represents the balance with a peer.
@@ -50,8 +52,8 @@ func (s *Service) GetBalances(ctx context.Context) ([]Balance, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("get balances failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return nil, err
 	}
 
 	var res BalancesResponse
@@ -75,8 +77,8 @@ func (s *Service) GetPeerBalance(ctx context.Context, address string) (*Balance,
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("get peer balance failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return nil, err
 	}
 
 	var res Balance
@@ -84,6 +86,17 @@ func (s *Service) GetPeerBalance(ctx context.Context, address string) (*Balance,
 		return nil, err
 	}
 	return &res, nil
+}
+
+// GetPastDueConsumptionBalances is the bee-js alias for GetConsumed.
+// Both hit /consumed and return one entry per peer.
+func (s *Service) GetPastDueConsumptionBalances(ctx context.Context) ([]Balance, error) {
+	return s.GetConsumed(ctx)
+}
+
+// GetPastDueConsumptionPeerBalance is the bee-js alias for GetPeerConsumed.
+func (s *Service) GetPastDueConsumptionPeerBalance(ctx context.Context, address string) (*Balance, error) {
+	return s.GetPeerConsumed(ctx, address)
 }
 
 // GetConsumed retrieves the past due consumption balances with all known peers.
@@ -100,8 +113,8 @@ func (s *Service) GetConsumed(ctx context.Context) ([]Balance, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("get consumed failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return nil, err
 	}
 
 	var res BalancesResponse
@@ -125,8 +138,8 @@ func (s *Service) GetPeerConsumed(ctx context.Context, address string) (*Balance
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("get peer consumed failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return nil, err
 	}
 
 	var res Balance

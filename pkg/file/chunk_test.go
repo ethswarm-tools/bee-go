@@ -10,12 +10,15 @@ import (
 	"testing"
 
 	"github.com/ethersphere/bee-go/pkg/file"
+	"github.com/ethersphere/bee-go/pkg/swarm"
 )
 
 func TestService_Chunk(t *testing.T) {
+	const refHex = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	batch := swarm.MustBatchID(strings.Repeat("bb", 32))
 	tests := []struct {
 		name    string
-		batchID string
+		batchID swarm.BatchID
 		data    []byte
 		handler http.HandlerFunc
 		wantRef string
@@ -23,7 +26,7 @@ func TestService_Chunk(t *testing.T) {
 	}{
 		{
 			name:    "upload ok",
-			batchID: "batch1",
+			batchID: batch,
 			data:    []byte("chunk data"),
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				if r.Method != http.MethodPost {
@@ -31,9 +34,9 @@ func TestService_Chunk(t *testing.T) {
 					return
 				}
 				w.WriteHeader(http.StatusCreated)
-				w.Write([]byte(`{"reference": "ref1"}`))
+				w.Write([]byte(`{"reference": "` + refHex + `"}`))
 			},
-			wantRef: "ref1",
+			wantRef: refHex,
 		},
 	}
 
@@ -48,8 +51,8 @@ func TestService_Chunk(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("UploadChunk error = %v, wantErr %v", err, tt.wantErr)
 			}
-			if !tt.wantErr && got.Value != tt.wantRef {
-				t.Errorf("UploadChunk ref = %v, want %v", got.Value, tt.wantRef)
+			if !tt.wantErr && got.Reference.Hex() != tt.wantRef {
+				t.Errorf("UploadChunk ref = %v, want %v", got.Reference.Hex(), tt.wantRef)
 			}
 
 			// Test Download
@@ -66,7 +69,7 @@ func TestService_Chunk(t *testing.T) {
 					w.Write(tt.data)
 				})
 
-				data, err := c.DownloadChunk(context.Background(), got)
+				data, err := c.DownloadChunk(context.Background(), got.Reference, nil)
 				if err != nil {
 					t.Fatalf("DownloadChunk error = %v", err)
 				}

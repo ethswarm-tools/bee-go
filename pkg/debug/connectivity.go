@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+
+	"github.com/ethersphere/bee-go/pkg/swarm"
 )
 
 // GetBlocklist retrieves the list of blocklisted peers.
@@ -22,8 +24,8 @@ func (s *Service) GetBlocklist(ctx context.Context) ([]Peer, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("get blocklist failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return nil, err
 	}
 
 	var res struct {
@@ -49,8 +51,8 @@ func (s *Service) RemovePeer(ctx context.Context, address string) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("remove peer failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return err
 	}
 	return nil
 }
@@ -69,8 +71,8 @@ func (s *Service) PingPeer(ctx context.Context, address string) (*string, error)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("ping peer failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return nil, err
 	}
 
 	var res struct {

@@ -13,8 +13,9 @@ import (
 )
 
 func TestService_Pin(t *testing.T) {
+	const refHex = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasSuffix(r.URL.Path, "/ref1") {
+		if strings.HasSuffix(r.URL.Path, "/"+refHex) {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
@@ -24,7 +25,7 @@ func TestService_Pin(t *testing.T) {
 
 	u, _ := url.Parse(s.URL)
 	c := api.NewService(u, http.DefaultClient)
-	ref := swarm.Reference{Value: "ref1"}
+	ref := swarm.MustReference(refHex)
 
 	// Test Pin
 	if err := c.Pin(context.Background(), ref); err != nil {

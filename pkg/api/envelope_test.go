@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/ethersphere/bee-go/pkg/api"
+	"github.com/ethersphere/bee-go/pkg/swarm"
 )
 
 func TestService_Envelope(t *testing.T) {
@@ -26,7 +27,9 @@ func TestService_Envelope(t *testing.T) {
 	c := api.NewService(u, http.DefaultClient)
 
 	// Envelope
-	env, err := c.PostEnvelope(context.Background(), "batch1", "ref1")
+	batch := swarm.MustBatchID(strings.Repeat("aa", 32))
+	ref := swarm.MustReference(strings.Repeat("bb", 32))
+	env, err := c.PostEnvelope(context.Background(), batch, ref)
 	if err != nil {
 		t.Fatalf("PostEnvelope error = %v", err)
 	}

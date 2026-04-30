@@ -12,14 +12,20 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ethersphere/bee-go/pkg/api"
 	"github.com/ethersphere/bee-go/pkg/file"
 	"github.com/ethersphere/bee-go/pkg/swarm"
 )
 
 func TestService_UploadFile(t *testing.T) {
+	const (
+		refHex   = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+		batchHex = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+	)
+	batch := swarm.MustBatchID(batchHex)
 	tests := []struct {
 		name        string
-		batchID     string
+		batchID     swarm.BatchID
 		data        []byte
 		fileName    string
 		contentType string
@@ -29,12 +35,12 @@ func TestService_UploadFile(t *testing.T) {
 	}{
 		{
 			name:        "ok with content type",
-			batchID:     "batch1",
+			batchID:     batch,
 			data:        []byte("hello"),
 			fileName:    "hello.txt",
 			contentType: "text/plain",
 			handler: func(w http.ResponseWriter, r *http.Request) {
-				if r.Header.Get("Swarm-Postage-Batch-Id") != "batch1" {
+				if r.Header.Get("Swarm-Postage-Batch-Id") != batchHex {
 					w.WriteHeader(http.StatusBadRequest)
 					return
 				}
@@ -47,13 +53,13 @@ func TestService_UploadFile(t *testing.T) {
 					return
 				}
 				w.WriteHeader(http.StatusCreated)
-				w.Write([]byte(`{"reference": "ref1"}`))
+				w.Write([]byte(`{"reference": "` + refHex + `"}`))
 			},
-			wantRef: "ref1",
+			wantRef: refHex,
 		},
 		{
 			name:        "ok default content type",
-			batchID:     "batch1",
+			batchID:     batch,
 			data:        []byte("hello"),
 			fileName:    "",
 			contentType: "",
@@ -63,9 +69,9 @@ func TestService_UploadFile(t *testing.T) {
 					return
 				}
 				w.WriteHeader(http.StatusCreated)
-				w.Write([]byte(`{"reference": "ref1"}`))
+				w.Write([]byte(`{"reference": "` + refHex + `"}`))
 			},
-			wantRef: "ref1",
+			wantRef: refHex,
 		},
 	}
 
@@ -81,8 +87,8 @@ func TestService_UploadFile(t *testing.T) {
 				t.Errorf("Service.UploadFile() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !tt.wantErr && got.Value != tt.wantRef {
-				t.Errorf("Service.UploadFile() = %v, want %v", got.Value, tt.wantRef)
+			if !tt.wantErr && got.Reference.Hex() != tt.wantRef {
+				t.Errorf("Service.UploadFile() = %v, want %v", got.Reference.Hex(), tt.wantRef)
 			}
 		})
 	}
@@ -99,9 +105,9 @@ func TestService_DownloadFile(t *testing.T) {
 	}{
 		{
 			name: "ok",
-			ref:  swarm.Reference{Value: "ref1"},
+			ref:  swarm.MustReference("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
 			handler: func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path != "/bzz/ref1" {
+				if r.URL.Path != "/bzz/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" {
 					w.WriteHeader(http.StatusNotFound)
 					return
 				}
@@ -120,7 +126,7 @@ func TestService_DownloadFile(t *testing.T) {
 
 			u, _ := url.Parse(s.URL)
 			c := file.NewService(u, http.DefaultClient)
-			reader, ct, err := c.DownloadFile(context.Background(), tt.ref)
+			reader, headers, err := c.DownloadFile(context.Background(), tt.ref, nil)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Service.DownloadFile() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -131,8 +137,8 @@ func TestService_DownloadFile(t *testing.T) {
 				if !bytes.Equal(got, tt.want) {
 					t.Errorf("Service.DownloadFile() data = %s, want %s", got, tt.want)
 				}
-				if ct != tt.wantCT {
-					t.Errorf("Service.DownloadFile() content-type = %s, want %s", ct, tt.wantCT)
+				if headers.ContentType != tt.wantCT {
+					t.Errorf("Service.DownloadFile() content-type = %s, want %s", headers.ContentType, tt.wantCT)
 				}
 			}
 		})
@@ -155,9 +161,14 @@ func TestService_UploadCollection(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	const (
+		collRefHex   = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+		collBatchHex = "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+	)
+	collBatch := swarm.MustBatchID(collBatchHex)
 	tests := []struct {
 		name      string
-		batchID   string
+		batchID   swarm.BatchID
 		dir       string
 		indexFile string
 		handler   http.HandlerFunc
@@ -166,11 +177,11 @@ func TestService_UploadCollection(t *testing.T) {
 	}{
 		{
 			name:      "ok",
-			batchID:   "batch1",
+			batchID:   collBatch,
 			dir:       tmpDir,
 			indexFile: "index.html",
 			handler: func(w http.ResponseWriter, r *http.Request) {
-				if r.Header.Get("Swarm-Postage-Batch-Id") != "batch1" {
+				if r.Header.Get("Swarm-Postage-Batch-Id") != collBatchHex {
 					w.WriteHeader(http.StatusBadRequest)
 					return
 				}
@@ -182,7 +193,7 @@ func TestService_UploadCollection(t *testing.T) {
 					w.WriteHeader(http.StatusBadRequest)
 					return
 				}
-				if r.URL.Query().Get("index") != "index.html" {
+				if r.Header.Get("Swarm-Index-Document") != "index.html" {
 					w.WriteHeader(http.StatusBadRequest)
 					return
 				}
@@ -212,9 +223,9 @@ func TestService_UploadCollection(t *testing.T) {
 				}
 
 				w.WriteHeader(http.StatusCreated)
-				w.Write([]byte(`{"reference": "ref1"}`))
+				w.Write([]byte(`{"reference": "` + collRefHex + `"}`))
 			},
-			wantRef: "ref1",
+			wantRef: collRefHex,
 		},
 	}
 
@@ -225,13 +236,14 @@ func TestService_UploadCollection(t *testing.T) {
 
 			u, _ := url.Parse(s.URL)
 			c := file.NewService(u, http.DefaultClient)
-			got, err := c.UploadCollection(context.Background(), tt.batchID, tt.dir, tt.indexFile, nil)
+			opts := &api.CollectionUploadOptions{IndexDocument: tt.indexFile}
+			got, err := c.UploadCollection(context.Background(), tt.batchID, tt.dir, opts)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Service.UploadCollection() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !tt.wantErr && got.Value != tt.wantRef {
-				t.Errorf("Service.UploadCollection() = %v, want %v", got.Value, tt.wantRef)
+			if !tt.wantErr && got.Reference.Hex() != tt.wantRef {
+				t.Errorf("Service.UploadCollection() = %v, want %v", got.Reference.Hex(), tt.wantRef)
 			}
 		})
 	}

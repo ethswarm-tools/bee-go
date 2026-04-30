@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -12,7 +11,7 @@ import (
 
 // Pin pins a reference.
 func (s *Service) Pin(ctx context.Context, ref swarm.Reference) error {
-	u := s.baseURL.ResolveReference(&url.URL{Path: "pins/" + ref.Value})
+	u := s.baseURL.ResolveReference(&url.URL{Path: "pins/" + ref.Hex()})
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u.String(), nil)
 	if err != nil {
 		return err
@@ -24,15 +23,15 @@ func (s *Service) Pin(ctx context.Context, ref swarm.Reference) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		return fmt.Errorf("pin failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return err
 	}
 	return nil
 }
 
 // Unpin unpins a reference.
 func (s *Service) Unpin(ctx context.Context, ref swarm.Reference) error {
-	u := s.baseURL.ResolveReference(&url.URL{Path: "pins/" + ref.Value})
+	u := s.baseURL.ResolveReference(&url.URL{Path: "pins/" + ref.Hex()})
 	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, u.String(), nil)
 	if err != nil {
 		return err
@@ -44,8 +43,8 @@ func (s *Service) Unpin(ctx context.Context, ref swarm.Reference) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("unpin failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return err
 	}
 	return nil
 }
@@ -54,7 +53,7 @@ func (s *Service) Unpin(ctx context.Context, ref swarm.Reference) error {
 // For now, simpler check.
 // Note: GET /pins/ref generally returns 200/404.
 func (s *Service) GetPin(ctx context.Context, ref swarm.Reference) (bool, error) {
-	u := s.baseURL.ResolveReference(&url.URL{Path: "pins/" + ref.Value})
+	u := s.baseURL.ResolveReference(&url.URL{Path: "pins/" + ref.Hex()})
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
 		return false, err
@@ -72,7 +71,7 @@ func (s *Service) GetPin(ctx context.Context, ref swarm.Reference) (bool, error)
 	if resp.StatusCode == http.StatusNotFound {
 		return false, nil
 	}
-	return false, fmt.Errorf("get pin status failed with status: %d", resp.StatusCode)
+	return false, swarm.NewBeeResponseError(http.MethodGet, u.String(), resp)
 }
 
 // ListPins retrieves all pinned references.
@@ -89,8 +88,8 @@ func (s *Service) ListPins(ctx context.Context) ([]swarm.Reference, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("list pins failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return nil, err
 	}
 
 	var res struct {

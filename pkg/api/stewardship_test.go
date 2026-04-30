@@ -13,10 +13,11 @@ import (
 )
 
 func TestService_Stewardship(t *testing.T) {
+	const batchHex = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/stewardship/") {
 			if r.Method == http.MethodPut {
-				if r.Header.Get("swarm-postage-batch-id") != "batch1" {
+				if r.Header.Get("swarm-postage-batch-id") != batchHex {
 					w.WriteHeader(http.StatusBadRequest)
 					return
 				}
@@ -35,10 +36,11 @@ func TestService_Stewardship(t *testing.T) {
 
 	u, _ := url.Parse(s.URL)
 	c := api.NewService(u, http.DefaultClient)
-	ref := swarm.Reference{Value: "ref1"}
+	ref := swarm.MustReference("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+	batch := swarm.MustBatchID(batchHex)
 
 	// Reupload
-	if err := c.Reupload(context.Background(), ref, "batch1"); err != nil {
+	if err := c.Reupload(context.Background(), ref, batch); err != nil {
 		t.Fatalf("Reupload error = %v", err)
 	}
 

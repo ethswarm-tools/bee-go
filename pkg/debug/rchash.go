@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+
+	"github.com/ethersphere/bee-go/pkg/swarm"
 )
 
 // RCHash retrieves the RCHash estimate.
@@ -22,8 +24,8 @@ func (s *Service) RCHash(ctx context.Context, depth int, anchor1 string, anchor2
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("rchash failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return 0, err
 	}
 
 	var res struct {

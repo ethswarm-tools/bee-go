@@ -12,42 +12,37 @@ import (
 	"github.com/ethersphere/bee-go/pkg/swarm"
 )
 
-// UploadSOC uploads a Single Owner Chunk.
-func (s *Service) UploadSOC(ctx context.Context, batchID string, owner string, id string, signature string, data []byte, opts *api.UploadOptions) (swarm.Reference, error) {
-	path := fmt.Sprintf("soc/%s/%s", owner, id)
+// UploadSOC uploads a Single Owner Chunk. The owner / id / signature triple
+// uniquely addresses the chunk on the network.
+func (s *Service) UploadSOC(ctx context.Context, batchID swarm.BatchID, owner swarm.EthAddress, id swarm.Identifier, signature swarm.Signature, data []byte, opts *api.UploadOptions) (api.UploadResult, error) {
+	path := fmt.Sprintf("soc/%s/%s", owner.Hex(), id.Hex())
 	u := s.baseURL.ResolveReference(&url.URL{Path: path})
 	q := u.Query()
-	q.Set("sig", signature)
+	q.Set("sig", signature.Hex())
 	u.RawQuery = q.Encode()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u.String(), bytes.NewReader(data))
 	if err != nil {
-		return swarm.Reference{}, err
+		return api.UploadResult{}, err
 	}
-
-	req.Header.Set("Swarm-Postage-Batch-Id", batchID)
 	req.Header.Set("Content-Type", "application/octet-stream")
-
-	if opts != nil {
-		opts.ApplyToRequest(req)
-	}
+	api.PrepareUploadHeaders(req, batchID, opts)
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
-		return swarm.Reference{}, err
+		return api.UploadResult{}, err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		return swarm.Reference{}, fmt.Errorf("upload soc failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return api.UploadResult{}, err
 	}
 
 	var res struct {
 		Reference string `json:"reference"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
-		return swarm.Reference{}, err
+		return api.UploadResult{}, err
 	}
-
-	return swarm.Reference{Value: res.Reference}, nil
+	return api.ReadUploadResult(res.Reference, resp.Header)
 }

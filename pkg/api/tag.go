@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+
+	"github.com/ethersphere/bee-go/pkg/swarm"
 )
 
 // Tag represents a Swarm tag.
@@ -38,8 +40,8 @@ func (s *Service) CreateTag(ctx context.Context) (Tag, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusCreated {
-		return Tag{}, fmt.Errorf("create tag failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return Tag{}, err
 	}
 
 	var t Tag
@@ -63,8 +65,8 @@ func (s *Service) GetTag(ctx context.Context, uid uint32) (Tag, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return Tag{}, fmt.Errorf("get tag failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return Tag{}, err
 	}
 
 	var t Tag
@@ -97,8 +99,8 @@ func (s *Service) ListTags(ctx context.Context, offset int, limit int) ([]Tag, e
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("list tags failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return nil, err
 	}
 
 	var res struct {
@@ -124,8 +126,8 @@ func (s *Service) DeleteTag(ctx context.Context, uid uint32) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("delete tag failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return err
 	}
 	return nil
 }
@@ -151,8 +153,8 @@ func (s *Service) UpdateTag(ctx context.Context, uid uint32, tag Tag) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("update tag failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return err
 	}
 	return nil
 }

@@ -37,14 +37,17 @@ func main() {
 
 	// 1. Download the File
 	// DownloadFile(ctx, reference) returns an io.ReadCloser and the Content-Type
-	ref := swarm.Reference{Value: reference}
-	reader, contentType, err := client.File.DownloadFile(context.Background(), ref)
+	ref, err := swarm.ReferenceFromHex(reference)
+	if err != nil {
+		log.Fatalf("Invalid reference: %v", err)
+	}
+	reader, headers, err := client.File.DownloadFile(context.Background(), ref, nil)
 	if err != nil {
 		log.Fatalf("Download failed: %v", err)
 	}
 	defer reader.Close()
 
-	fmt.Printf("File found! Content-Type: %s\n", contentType)
+	fmt.Printf("File found! Content-Type: %s\n", headers.ContentType)
 
 	// 2. Create the local file
 	outFile, err := os.Create(outputFilename)

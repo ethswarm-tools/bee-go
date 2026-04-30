@@ -3,9 +3,10 @@ package debug
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/url"
+
+	"github.com/ethersphere/bee-go/pkg/swarm"
 )
 
 // Health checks if the Bee node is healthy.
@@ -22,10 +23,10 @@ func (s *Service) Health(ctx context.Context) (bool, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusOK {
-		return true, nil
+	if err := swarm.CheckResponse(resp); err != nil {
+		return false, err
 	}
-	return false, fmt.Errorf("health check failed with status: %d", resp.StatusCode)
+	return true, nil
 }
 
 // Readiness checks if the Bee node is ready to serve requests.
@@ -77,8 +78,8 @@ func (s *Service) Status(ctx context.Context) (StatusResponse, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return StatusResponse{}, fmt.Errorf("status check failed with code: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return StatusResponse{}, err
 	}
 
 	var res StatusResponse
@@ -110,8 +111,8 @@ func (s *Service) NodeInfo(ctx context.Context) (*NodeInfo, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("get node info failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return nil, err
 	}
 
 	var info NodeInfo
@@ -142,8 +143,8 @@ func (s *Service) ChainState(ctx context.Context) (ChainStateResponse, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return ChainStateResponse{}, fmt.Errorf("get chainstate failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return ChainStateResponse{}, err
 	}
 
 	var res ChainStateResponse
@@ -174,8 +175,8 @@ func (s *Service) ReserveState(ctx context.Context) (ReserveStateResponse, error
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return ReserveStateResponse{}, fmt.Errorf("get reservestate failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return ReserveStateResponse{}, err
 	}
 
 	var res ReserveStateResponse
@@ -209,8 +210,8 @@ func (s *Service) Topology(ctx context.Context) (TopologyResponse, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return TopologyResponse{}, fmt.Errorf("get topology failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return TopologyResponse{}, err
 	}
 
 	var res TopologyResponse
@@ -245,8 +246,8 @@ func (s *Service) Peers(ctx context.Context) (PeersResponse, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return PeersResponse{}, fmt.Errorf("get peers failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return PeersResponse{}, err
 	}
 
 	var res PeersResponse
@@ -279,8 +280,8 @@ func (s *Service) Addresses(ctx context.Context) (AddressesResponse, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return AddressesResponse{}, fmt.Errorf("get addresses failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return AddressesResponse{}, err
 	}
 
 	var res AddressesResponse

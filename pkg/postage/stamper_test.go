@@ -1,56 +1,61 @@
 package postage
 
 import (
-	"encoding/hex"
+	"strings"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethersphere/bee-go/pkg/swarm"
 )
 
 func TestStamper(t *testing.T) {
-	// Generate random key
-	privKey, err := crypto.GenerateKey()
+	signer, err := swarm.PrivateKeyFromHex(strings.Repeat("11", 32))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	batchID := "0000000000000000000000000000000000000000000000000000000000000000"
-	stamper, err := NewStamper(privKey, batchID, 20)
+	batchID := swarm.MustBatchID(strings.Repeat("00", 32))
+	stamper, err := NewStamper(signer, batchID, 20)
 	if err != nil {
 		t.Fatalf("NewStamper failed: %v", err)
 	}
 
-	// Stamp a chunk
-	chunkAddr := make([]byte, 32) // zero address, maps to bucket 0
-	bID, idx, sig, err := stamper.Stamp(chunkAddr)
+	// Stamp a chunk: zero address maps to bucket 0.
+	chunkAddr := make([]byte, 32)
+	env, err := stamper.Stamp(chunkAddr)
 	if err != nil {
 		t.Fatalf("Stamp failed: %v", err)
 	}
 
-	if hex.EncodeToString(bID) != batchID {
-		t.Errorf("Wrong batch ID returned: %s", hex.EncodeToString(bID))
+	if !env.BatchID.Equal(batchID.Bytes) {
+		t.Errorf("Wrong batch ID returned: %s", env.BatchID.Hex())
+	}
+	if env.Signature.Len() != 65 {
+		t.Errorf("Invalid signature length: %d", env.Signature.Len())
+	}
+	if len(env.Index) != 8 {
+		t.Errorf("Invalid index length: %d", len(env.Index))
+	}
+	if env.Issuer.Len() != 20 {
+		t.Errorf("Invalid issuer length: %d", env.Issuer.Len())
 	}
 
-	if len(sig) != 65 {
-		t.Errorf("Invalid signature length: %d", len(sig))
-	}
-
-	if len(idx) != 8 {
-		t.Errorf("Invalid index length: %d", len(idx))
-	}
-
-	// Verify bucket increment
-	// Bucket 0 should now be 1
+	// Verify bucket increment.
 	if stamper.buckets[0] != 1 {
 		t.Errorf("Bucket not incremented: %d", stamper.buckets[0])
 	}
 
-	// Stamp again, should be 2
-	_, _, _, err = stamper.Stamp(chunkAddr)
-	if err != nil {
+	// Stamp again, should be 2.
+	if _, err := stamper.Stamp(chunkAddr); err != nil {
 		t.Fatal(err)
 	}
 	if stamper.buckets[0] != 2 {
 		t.Errorf("Bucket not incremented: %d", stamper.buckets[0])
+	}
+
+	// Signature must verify against the issuer address (sanity check that
+	// PrivateKey.Sign + Signature.RecoverPublicKey are mutually consistent).
+	toSign := append(append(append(append([]byte{}, chunkAddr...), batchID.Raw()...), env.Index...), env.Timestamp...)
+	if !env.Signature.IsValid(toSign, env.Issuer) {
+		t.Errorf("signature does not verify against issuer")
 	}
 }

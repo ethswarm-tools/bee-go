@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/ethersphere/bee-go/pkg/api"
+	"github.com/ethersphere/bee-go/pkg/swarm"
 )
 
 func TestService_Grantee(t *testing.T) {
@@ -33,8 +34,12 @@ func TestService_Grantee(t *testing.T) {
 	u, _ := url.Parse(s.URL)
 	c := api.NewService(u, http.DefaultClient)
 
+	batch := swarm.MustBatchID(strings.Repeat("aa", 32))
+	ref := swarm.MustReference(strings.Repeat("bb", 32))
+	hist := swarm.MustReference(strings.Repeat("cc", 32))
+
 	// Grantee
-	grantees, err := c.GetGrantees(context.Background(), "ref1")
+	grantees, err := c.GetGrantees(context.Background(), ref)
 	if err != nil {
 		t.Fatalf("GetGrantees error = %v", err)
 	}
@@ -42,7 +47,7 @@ func TestService_Grantee(t *testing.T) {
 		t.Errorf("GetGrantees = %v, want [key1 key2]", grantees)
 	}
 
-	res, err := c.CreateGrantees(context.Background(), "batch1", []string{"key1"})
+	res, err := c.CreateGrantees(context.Background(), batch, []string{"key1"})
 	if err != nil {
 		t.Fatalf("CreateGrantees error = %v", err)
 	}
@@ -50,7 +55,7 @@ func TestService_Grantee(t *testing.T) {
 		t.Errorf("CreateGrantees ref = %v, want ref1", res.Ref)
 	}
 
-	res, err = c.PatchGrantees(context.Background(), "batch1", "ref1", "hist1", []string{"key2"}, nil)
+	res, err = c.PatchGrantees(context.Background(), batch, ref, hist, []string{"key2"}, nil)
 	if err != nil {
 		t.Fatalf("PatchGrantees error = %v", err)
 	}

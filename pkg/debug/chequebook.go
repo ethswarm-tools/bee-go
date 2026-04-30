@@ -3,10 +3,11 @@ package debug
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"math/big"
 	"net/http"
 	"net/url"
+
+	"github.com/ethersphere/bee-go/pkg/swarm"
 )
 
 // WalletResponse represents the node's wallet addresses and balances.
@@ -92,8 +93,8 @@ func (s *Service) GetWallet(ctx context.Context) (WalletResponse, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return WalletResponse{}, fmt.Errorf("get wallet failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return WalletResponse{}, err
 	}
 
 	var res WalletResponse
@@ -122,8 +123,8 @@ func (s *Service) WithdrawBZZ(ctx context.Context, amount *big.Int, address stri
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("withdraw bzz failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return "", err
 	}
 
 	var res struct {
@@ -154,8 +155,8 @@ func (s *Service) WithdrawDAI(ctx context.Context, amount *big.Int, address stri
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("withdraw native token failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return "", err
 	}
 
 	var res struct {
@@ -181,8 +182,8 @@ func (s *Service) GetChequebookBalance(ctx context.Context) (ChequebookBalanceRe
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return ChequebookBalanceResponse{}, fmt.Errorf("get chequebook balance failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return ChequebookBalanceResponse{}, err
 	}
 
 	var res ChequebookBalanceResponse
@@ -210,8 +211,8 @@ func (s *Service) DepositTokens(ctx context.Context, amount *big.Int) (string, e
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("deposit tokens failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return "", err
 	}
 
 	var res struct {
@@ -241,8 +242,8 @@ func (s *Service) WithdrawTokens(ctx context.Context, amount *big.Int) (string, 
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("withdraw tokens failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return "", err
 	}
 
 	var res struct {
@@ -314,6 +315,30 @@ func (s *SettlementsResponse) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// PeerSettlement retrieves the sent and received settlement totals for
+// a specific peer. Mirrors bee-js Bee.getSettlements (note the
+// per-peer naming).
+func (s *Service) PeerSettlement(ctx context.Context, peer string) (Settlement, error) {
+	u := s.baseURL.ResolveReference(&url.URL{Path: "settlements/" + peer})
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return Settlement{}, err
+	}
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return Settlement{}, err
+	}
+	defer resp.Body.Close()
+	if err := swarm.CheckResponse(resp); err != nil {
+		return Settlement{}, err
+	}
+	var res Settlement
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return Settlement{}, err
+	}
+	return res, nil
+}
+
 // Settlements retrieves a list of settlements.
 func (s *Service) Settlements(ctx context.Context) (SettlementsResponse, error) {
 	u := s.baseURL.ResolveReference(&url.URL{Path: "settlements"})
@@ -328,8 +353,8 @@ func (s *Service) Settlements(ctx context.Context) (SettlementsResponse, error) 
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return SettlementsResponse{}, fmt.Errorf("get settlements failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return SettlementsResponse{}, err
 	}
 
 	var res SettlementsResponse
@@ -345,17 +370,6 @@ type Cheque struct {
 	Chequebook string   `json:"chequebook"`
 	Amount     *big.Int `json:"amount"`
 }
-
-type chequeJSON struct {
-	Peer       string `json:"peer"`
-	Chequebook string `json:"chequebook"`
-	Amount     string `json:"amount"` // Usually returns last cheque which has cumulative amount? Or just amount? Bee API says "cumulativePayout"
-}
-
-// Wait, the API response for /chequebook/cheque matches {lastcheques: [{peer, lastreceived: {payout, beneficiary, ...}}]} structure is complex.
-// Let's simplify and just map what we can see from docs: GET /chequebook/cheque
-// Response: {"lastcheques": [{"peer": "...", "lastreceived": {"beneficiary": "...", "chequebook": "...", "payout": 100}}]}
-// Use a simplified struct for now or map correctly.
 
 type LastCheque struct {
 	Peer         string `json:"peer"`
@@ -416,8 +430,8 @@ func (s *Service) LastCheques(ctx context.Context) (ChequesResponse, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return ChequesResponse{}, fmt.Errorf("get last cheques failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return ChequesResponse{}, err
 	}
 
 	var res ChequesResponse
@@ -427,29 +441,16 @@ func (s *Service) LastCheques(ctx context.Context) (ChequesResponse, error) {
 	return res, nil
 }
 
-// PendingTransactions retrieves the list of pending transactions.
+// PendingTransactions retrieves the list of pending transaction hashes.
+// For full transaction info use GetAllPendingTransactions.
 func (s *Service) PendingTransactions(ctx context.Context) ([]string, error) {
-	u := s.baseURL.ResolveReference(&url.URL{Path: "transactions"})
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	txs, err := s.GetAllPendingTransactions(ctx)
 	if err != nil {
 		return nil, err
 	}
-
-	resp, err := s.httpClient.Do(req)
-	if err != nil {
-		return nil, err
+	out := make([]string, 0, len(txs))
+	for _, t := range txs {
+		out = append(out, t.TransactionHash)
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("get pending transactions failed with status: %d", resp.StatusCode)
-	}
-
-	var res struct {
-		PendingTransactions []string `json:"pendingTransactions"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
-		return nil, err
-	}
-	return res.PendingTransactions, nil
+	return out, nil
 }

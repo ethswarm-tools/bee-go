@@ -9,9 +9,11 @@ import (
 	"testing"
 
 	"github.com/ethersphere/bee-go/pkg/file"
+	"github.com/ethersphere/bee-go/pkg/swarm"
 )
 
 func TestService_SOC(t *testing.T) {
+	const refHex = "4444444444444444444444444444444444444444444444444444444444444444"
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/soc/") && r.Method == http.MethodPost {
 			if r.URL.Query().Get("sig") == "" {
@@ -19,7 +21,7 @@ func TestService_SOC(t *testing.T) {
 				return
 			}
 			w.WriteHeader(http.StatusCreated)
-			w.Write([]byte(`{"reference": "soc_ref"}`))
+			w.Write([]byte(`{"reference": "` + refHex + `"}`))
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -29,11 +31,16 @@ func TestService_SOC(t *testing.T) {
 	u, _ := url.Parse(s.URL)
 	c := file.NewService(u, http.DefaultClient)
 
-	ref, err := c.UploadSOC(context.Background(), "batch1", "owner", "id", "sig", []byte("data"), nil)
+	batch := swarm.MustBatchID(strings.Repeat("aa", 32))
+	owner, _ := swarm.EthAddressFromHex(strings.Repeat("bb", 20))
+	id := swarm.IdentifierFromString("test-id")
+	sig, _ := swarm.SignatureFromHex(strings.Repeat("cc", 65))
+
+	ref, err := c.UploadSOC(context.Background(), batch, owner, id, sig, []byte("data"), nil)
 	if err != nil {
 		t.Fatalf("UploadSOC error = %v", err)
 	}
-	if ref.Value != "soc_ref" {
-		t.Errorf("UploadSOC ref = %v, want soc_ref", ref.Value)
+	if ref.Reference.Hex() != refHex {
+		t.Errorf("UploadSOC ref = %v, want %s", ref.Reference.Hex(), refHex)
 	}
 }

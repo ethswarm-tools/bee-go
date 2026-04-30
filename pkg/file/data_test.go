@@ -14,9 +14,14 @@ import (
 )
 
 func TestService_UploadData(t *testing.T) {
+	const (
+		refHex   = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+		batchHex = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+	)
+	batch := swarm.MustBatchID(batchHex)
 	tests := []struct {
 		name    string
-		batchID string
+		batchID swarm.BatchID
 		data    []byte
 		handler http.HandlerFunc
 		wantRef string
@@ -24,21 +29,21 @@ func TestService_UploadData(t *testing.T) {
 	}{
 		{
 			name:    "ok",
-			batchID: "batch1",
+			batchID: batch,
 			data:    []byte("hello"),
 			handler: func(w http.ResponseWriter, r *http.Request) {
-				if r.Header.Get("Swarm-Postage-Batch-Id") != "batch1" {
+				if r.Header.Get("Swarm-Postage-Batch-Id") != batchHex {
 					w.WriteHeader(http.StatusBadRequest)
 					return
 				}
 				w.WriteHeader(http.StatusCreated)
-				w.Write([]byte(`{"reference": "ref1"}`))
+				w.Write([]byte(`{"reference": "` + refHex + `"}`))
 			},
-			wantRef: "ref1",
+			wantRef: refHex,
 		},
 		{
 			name:    "server error",
-			batchID: "batch1",
+			batchID: batch,
 			data:    []byte("hello"),
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusInternalServerError)
@@ -59,14 +64,15 @@ func TestService_UploadData(t *testing.T) {
 				t.Errorf("Service.UploadData() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !tt.wantErr && got.Value != tt.wantRef {
-				t.Errorf("Service.UploadData() = %v, want %v", got.Value, tt.wantRef)
+			if !tt.wantErr && got.Reference.Hex() != tt.wantRef {
+				t.Errorf("Service.UploadData() = %v, want %v", got.Reference.Hex(), tt.wantRef)
 			}
 		})
 	}
 }
 
 func TestService_DownloadData(t *testing.T) {
+	const refHex = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	tests := []struct {
 		name    string
 		ref     swarm.Reference
@@ -76,9 +82,9 @@ func TestService_DownloadData(t *testing.T) {
 	}{
 		{
 			name: "ok",
-			ref:  swarm.Reference{Value: "ref1"},
+			ref:  swarm.MustReference(refHex),
 			handler: func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path != "/bytes/ref1" {
+				if r.URL.Path != "/bytes/"+refHex {
 					w.WriteHeader(http.StatusNotFound)
 					return
 				}
@@ -88,7 +94,7 @@ func TestService_DownloadData(t *testing.T) {
 		},
 		{
 			name: "not found",
-			ref:  swarm.Reference{Value: "ref1"},
+			ref:  swarm.MustReference(refHex),
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusNotFound)
 			},
@@ -103,7 +109,7 @@ func TestService_DownloadData(t *testing.T) {
 
 			u, _ := url.Parse(s.URL)
 			c := file.NewService(u, http.DefaultClient)
-			reader, err := c.DownloadData(context.Background(), tt.ref)
+			reader, err := c.DownloadData(context.Background(), tt.ref, nil)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Service.DownloadData() error = %v, wantErr %v", err, tt.wantErr)
 				return

@@ -53,16 +53,16 @@ func main() {
 	}
 
 	fmt.Printf("Successfully bought batch!\n")
-	fmt.Printf("Batch ID: %s\n", batchID)
-	
+	fmt.Printf("Batch ID: %s\n", batchID.Hex())
+
 	fmt.Println("\nNote: It takes a few minutes for the chain to confirm the transaction and for the batch to become usable (discoverable by the network).")
-	
+
 	// You can optionally poll to check when it's ready:
 	fmt.Println("Polling to see if the batch is ready... (Press Ctrl+C to cancel)")
 	for {
 		batch, err := client.Postage.GetPostageBatch(context.Background(), batchID)
 		if err == nil && batch.Usable {
-			fmt.Printf("Success! Batch %s is now usable and ready for uploads!\n", batchID)
+			fmt.Printf("Success! Batch %s is now usable and ready for uploads!\n", batchID.Hex())
 			break
 		}
 		

@@ -7,6 +7,8 @@ import (
 	"math/big"
 	"net/http"
 	"net/url"
+
+	"github.com/ethersphere/bee-go/pkg/swarm"
 )
 
 // GetStake retrieves the amount of staked BZZ.
@@ -23,8 +25,8 @@ func (s *Service) GetStake(ctx context.Context) (*big.Int, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("get stake failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return nil, err
 	}
 
 	var res struct {
@@ -55,8 +57,8 @@ func (s *Service) Stake(ctx context.Context, amount *big.Int) (string, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("stake failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return "", err
 	}
 
 	var res struct {
@@ -82,8 +84,8 @@ func (s *Service) GetWithdrawableStake(ctx context.Context) (*big.Int, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("get withdrawable stake failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return nil, err
 	}
 
 	var res struct {
@@ -114,8 +116,8 @@ func (s *Service) WithdrawSurplusStake(ctx context.Context) (string, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("withdraw surplus stake failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return "", err
 	}
 
 	var res struct {
@@ -141,8 +143,8 @@ func (s *Service) MigrateStake(ctx context.Context) (string, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("migrate stake failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return "", err
 	}
 
 	var res struct {
@@ -238,8 +240,8 @@ func (s *Service) RedistributionState(ctx context.Context) (RedistributionStateR
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return RedistributionStateResponse{}, fmt.Errorf("get redistribution state failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return RedistributionStateResponse{}, err
 	}
 
 	var res RedistributionStateResponse

@@ -10,7 +10,10 @@ import (
 	"testing"
 
 	"github.com/ethersphere/bee-go/pkg/postage"
+	"github.com/ethersphere/bee-go/pkg/swarm"
 )
+
+const testBatchHex = "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
 
 func TestService_GetPostageBatches(t *testing.T) {
 	tests := []struct {
@@ -22,7 +25,7 @@ func TestService_GetPostageBatches(t *testing.T) {
 		{
 			name: "ok",
 			handler: func(w http.ResponseWriter, r *http.Request) {
-				w.Write([]byte(`{"batches": [{"batchID": "123", "value": "1000", "start": 0, "owner": "abc", "depth": 17, "bucketDepth": 16, "immutable": false, "batchTTL": 86400}]}`))
+				w.Write([]byte(`{"batches": [{"batchID": "` + testBatchHex + `", "value": "1000", "start": 0, "owner": "abc", "depth": 17, "bucketDepth": 16, "immutable": false, "batchTTL": 86400}]}`))
 			},
 			wantLen: 1,
 		},
@@ -82,7 +85,7 @@ func TestService_CreatePostageBatch(t *testing.T) {
 		}
 
 		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(`{"batchID": "new_batch"}`))
+		w.Write([]byte(`{"batchID": "` + testBatchHex + `"}`))
 	}))
 	defer s.Close()
 
@@ -93,8 +96,8 @@ func TestService_CreatePostageBatch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreatePostageBatch error = %v", err)
 	}
-	if id != "new_batch" {
-		t.Errorf("CreatePostageBatch id = %v, want new_batch", id)
+	if id.Hex() != testBatchHex {
+		t.Errorf("CreatePostageBatch id = %v, want %s", id.Hex(), testBatchHex)
 	}
 }
 
@@ -104,7 +107,7 @@ func TestService_TopUpBatch(t *testing.T) {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
 		}
-		if r.URL.Path != "/stamps/topup/id1/100" {
+		if r.URL.Path != "/stamps/topup/"+testBatchHex+"/100" {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -115,7 +118,7 @@ func TestService_TopUpBatch(t *testing.T) {
 	u, _ := url.Parse(s.URL)
 	c := postage.NewService(u, http.DefaultClient)
 
-	err := c.TopUpBatch(context.Background(), "id1", big.NewInt(100))
+	err := c.TopUpBatch(context.Background(), swarm.MustBatchID(testBatchHex), big.NewInt(100))
 	if err != nil {
 		t.Fatalf("TopUpBatch error = %v", err)
 	}
@@ -127,7 +130,7 @@ func TestService_DiluteBatch(t *testing.T) {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
 		}
-		if r.URL.Path != "/stamps/dilute/id1/18" {
+		if r.URL.Path != "/stamps/dilute/"+testBatchHex+"/18" {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -138,7 +141,7 @@ func TestService_DiluteBatch(t *testing.T) {
 	u, _ := url.Parse(s.URL)
 	c := postage.NewService(u, http.DefaultClient)
 
-	err := c.DiluteBatch(context.Background(), "id1", 18)
+	err := c.DiluteBatch(context.Background(), swarm.MustBatchID(testBatchHex), 18)
 	if err != nil {
 		t.Fatalf("DiluteBatch error = %v", err)
 	}
@@ -146,9 +149,9 @@ func TestService_DiluteBatch(t *testing.T) {
 
 func TestService_GetPostageBatch(t *testing.T) {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasSuffix(r.URL.Path, "/stamps/batch1") && r.Method == http.MethodGet {
+		if strings.HasSuffix(r.URL.Path, "/stamps/"+testBatchHex) && r.Method == http.MethodGet {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"batchID": "batch1", "value": "200"}`))
+			w.Write([]byte(`{"batchID": "` + testBatchHex + `", "value": "200"}`))
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -158,12 +161,12 @@ func TestService_GetPostageBatch(t *testing.T) {
 	u, _ := url.Parse(s.URL)
 	c := postage.NewService(u, http.DefaultClient)
 
-	batch, err := c.GetPostageBatch(context.Background(), "batch1")
+	batch, err := c.GetPostageBatch(context.Background(), swarm.MustBatchID(testBatchHex))
 	if err != nil {
 		t.Fatalf("GetPostageBatch error = %v", err)
 	}
-	if batch.BatchID != "batch1" {
-		t.Errorf("BatchID = %v, want batch1", batch.BatchID)
+	if batch.BatchID.Hex() != testBatchHex {
+		t.Errorf("BatchID = %v, want %s", batch.BatchID.Hex(), testBatchHex)
 	}
 	if batch.Value.Cmp(big.NewInt(200)) != 0 {
 		t.Errorf("Batch Value = %v, want 200", batch.Value)

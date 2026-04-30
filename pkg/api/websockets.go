@@ -3,10 +3,13 @@ package api
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 
 	"github.com/gorilla/websocket"
+
+	"github.com/ethersphere/bee-go/pkg/swarm"
 )
 
 // Subscription represents a WebSocket subscription.
@@ -32,9 +35,9 @@ func PSSSubscribe(ctx context.Context, baseURL *url.URL, dialer *websocket.Diale
 	conn, resp, err := dialer.DialContext(ctx, wsURL, nil)
 	if err != nil {
 		if resp != nil {
-			return nil, fmt.Errorf("pps subscribe failed with status: %d, err: %w", resp.StatusCode, err)
+			return nil, swarm.WrapBeeError("pss subscribe", swarm.NewBeeResponseError(http.MethodGet, wsURL, resp))
 		}
-		return nil, err
+		return nil, swarm.WrapBeeError("pss subscribe", err)
 	}
 
 	return &Subscription{conn: conn}, nil
@@ -48,9 +51,9 @@ func GSOCSubscribe(ctx context.Context, baseURL *url.URL, dialer *websocket.Dial
 	conn, resp, err := dialer.DialContext(ctx, wsURL, nil)
 	if err != nil {
 		if resp != nil {
-			return nil, fmt.Errorf("gsoc subscribe failed with status: %d, err: %w", resp.StatusCode, err)
+			return nil, swarm.WrapBeeError("gsoc subscribe", swarm.NewBeeResponseError(http.MethodGet, wsURL, resp))
 		}
-		return nil, err
+		return nil, swarm.WrapBeeError("gsoc subscribe", err)
 	}
 
 	return &Subscription{conn: conn}, nil

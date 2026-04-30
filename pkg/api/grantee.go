@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+
+	"github.com/ethersphere/bee-go/pkg/swarm"
 )
 
 // GranteesResponse represents the list of grantees.
@@ -21,8 +23,8 @@ type GranteeResponse struct {
 }
 
 // GetGrantees retrieves the grantees for a reference.
-func (s *Service) GetGrantees(ctx context.Context, ref string) ([]string, error) {
-	u := s.baseURL.ResolveReference(&url.URL{Path: fmt.Sprintf("grantee/%s", ref)})
+func (s *Service) GetGrantees(ctx context.Context, ref swarm.Reference) ([]string, error) {
+	u := s.baseURL.ResolveReference(&url.URL{Path: fmt.Sprintf("grantee/%s", ref.Hex())})
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
 		return nil, err
@@ -34,8 +36,8 @@ func (s *Service) GetGrantees(ctx context.Context, ref string) ([]string, error)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("get grantees failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return nil, err
 	}
 
 	var res GranteesResponse
@@ -46,7 +48,7 @@ func (s *Service) GetGrantees(ctx context.Context, ref string) ([]string, error)
 }
 
 // CreateGrantees creates a new grantee list.
-func (s *Service) CreateGrantees(ctx context.Context, batchID string, grantees []string) (GranteeResponse, error) {
+func (s *Service) CreateGrantees(ctx context.Context, batchID swarm.BatchID, grantees []string) (GranteeResponse, error) {
 	u := s.baseURL.ResolveReference(&url.URL{Path: "grantee"})
 
 	body := struct {
@@ -65,7 +67,7 @@ func (s *Service) CreateGrantees(ctx context.Context, batchID string, grantees [
 		return GranteeResponse{}, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Swarm-Postage-Batch-Id", batchID)
+	req.Header.Set("Swarm-Postage-Batch-Id", batchID.Hex())
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
@@ -73,8 +75,8 @@ func (s *Service) CreateGrantees(ctx context.Context, batchID string, grantees [
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
-		return GranteeResponse{}, fmt.Errorf("create grantees failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return GranteeResponse{}, err
 	}
 
 	var res GranteeResponse
@@ -85,8 +87,8 @@ func (s *Service) CreateGrantees(ctx context.Context, batchID string, grantees [
 }
 
 // PatchGrantees updates the grantees for a reference.
-func (s *Service) PatchGrantees(ctx context.Context, batchID string, ref string, historyRef string, add []string, revoke []string) (GranteeResponse, error) {
-	u := s.baseURL.ResolveReference(&url.URL{Path: fmt.Sprintf("grantee/%s", ref)})
+func (s *Service) PatchGrantees(ctx context.Context, batchID swarm.BatchID, ref swarm.Reference, historyRef swarm.Reference, add []string, revoke []string) (GranteeResponse, error) {
+	u := s.baseURL.ResolveReference(&url.URL{Path: fmt.Sprintf("grantee/%s", ref.Hex())})
 
 	body := struct {
 		Add    []string `json:"add,omitempty"`
@@ -106,8 +108,8 @@ func (s *Service) PatchGrantees(ctx context.Context, batchID string, ref string,
 		return GranteeResponse{}, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Swarm-Postage-Batch-Id", batchID)
-	req.Header.Set("Swarm-Act-History-Address", historyRef)
+	req.Header.Set("Swarm-Postage-Batch-Id", batchID.Hex())
+	req.Header.Set("Swarm-Act-History-Address", historyRef.Hex())
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
@@ -115,8 +117,8 @@ func (s *Service) PatchGrantees(ctx context.Context, batchID string, ref string,
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return GranteeResponse{}, fmt.Errorf("patch grantees failed with status: %d", resp.StatusCode)
+	if err := swarm.CheckResponse(resp); err != nil {
+		return GranteeResponse{}, err
 	}
 
 	var res GranteeResponse

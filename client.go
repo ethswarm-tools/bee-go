@@ -8,6 +8,7 @@ import (
 	"github.com/ethersphere/bee-go/pkg/api"
 	"github.com/ethersphere/bee-go/pkg/debug"
 	"github.com/ethersphere/bee-go/pkg/file"
+	"github.com/ethersphere/bee-go/pkg/gsoc"
 	"github.com/ethersphere/bee-go/pkg/postage"
 	"github.com/ethersphere/bee-go/pkg/pss"
 	"github.com/ethersphere/bee-go/pkg/swarm"
@@ -27,6 +28,7 @@ type Client struct {
 	Postage *postage.Service
 	Swarm   *swarm.Service
 	PSS     *pss.Service
+	GSOC    *gsoc.Service
 }
 
 // ClientOption is a function that configures a Client.
@@ -66,6 +68,7 @@ func NewClient(rawUrl string, opts ...ClientOption) (*Client, error) {
 	c.Postage = postage.NewService(c.baseUrl, c.httpClient)
 	c.Swarm = swarm.NewService(c.baseUrl, c.httpClient)
 	c.PSS = pss.NewService(c.baseUrl, c.httpClient, c.dialer)
+	c.GSOC = gsoc.NewService(c.baseUrl, c.httpClient, c.dialer, c.File)
 
 	return c, nil
 }
