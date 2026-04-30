@@ -40,19 +40,19 @@ func (s *Service) UploadCollectionEntries(ctx context.Context, batchID swarm.Bat
 				Size: int64(len(e.Data)),
 			}
 			if err := tw.WriteHeader(hdr); err != nil {
-				pw.CloseWithError(err)
+				_ = pw.CloseWithError(err)
 				return
 			}
 			if _, err := tw.Write(e.Data); err != nil {
-				pw.CloseWithError(err)
+				_ = pw.CloseWithError(err)
 				return
 			}
 		}
 		if err := tw.Close(); err != nil {
-			pw.CloseWithError(err)
+			_ = pw.CloseWithError(err)
 			return
 		}
-		pw.Close()
+		_ = pw.Close()
 	}()
 
 	u := s.baseURL.ResolveReference(&url.URL{Path: "bzz"})

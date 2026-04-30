@@ -299,6 +299,7 @@ func TestFindClosest_PartialMatch(t *testing.T) {
 		// Either is acceptable depending on how the trie chunked the prefix;
 		// what matters is that we got *some* prefix that is contained in the
 		// requested path.
+		//nolint:gocritic // testing that `matched` (the trie's returned prefix) is a prefix of the queried path; the asymmetry is intentional.
 		if !bytes.HasPrefix([]byte("/foo/zzz"), matched) {
 			t.Errorf("matched %q is not a prefix of /foo/zzz", matched)
 		}

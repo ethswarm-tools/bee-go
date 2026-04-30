@@ -1,0 +1,57 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gosec
+    - gocritic
+    - revive
+    - misspell
+  settings:
+    errcheck:
+      # Defer-close patterns are everywhere in Go HTTP code; flagging each
+      # one is noisy and the failure mode (resource leak on close error)
+      # is generally not worth re-handling at the call site.
+      exclude-functions:
+        - (io.Closer).Close
+        - (*net/http.Response).Body.Close
+        - (io.ReadCloser).Close
+    gosec:
+      excludes:
+        - G104  # unhandled errors — errcheck's domain
+        - G115  # int conversions: every site that triggers this is bounded by wire format (depth 17-34, len() < 256, etc.)
+        - G122  # TOCTOU in WalkDir: directory inputs are caller-trusted, not user input
+        - G304  # file open via variable: paths come from validated filepath.WalkDir or caller-supplied dirs
+        - G602  # slice index in BMT: segments are always power-of-2 by design
+    revive:
+      rules:
+        - name: var-naming
+        - name: unused-parameter
+          disabled: true
+        - name: unused-receiver
+          disabled: true
+  exclusions:
+    rules:
+      # _test.go files are allowed sloppier error handling for setup helpers.
+      - path: _test\.go
+        linters:
+          - errcheck
+          - gosec
+      # examples/ are tutorials, not production code; ergonomics > strictness.
+      - path: ^examples/
+        linters:
+          - errcheck
+          - gosec
+          - gocritic
+
+formatters:
+  enable:
+    - gofmt
+    - goimports

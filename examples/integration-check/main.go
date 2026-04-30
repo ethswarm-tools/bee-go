@@ -64,11 +64,11 @@ func main() {
 			return err
 		}
 		fmt.Printf("    bee=%s api=%s | client supports bee=%s api=%s\n",
-			v.BeeVersion, v.BeeApiVersion, v.SupportedBeeVersion, v.SupportedBeeApiVersion)
+			v.BeeVersion, v.BeeAPIVersion, v.SupportedBeeVersion, v.SupportedBeeAPIVersion)
 		return nil
 	})
-	check("IsSupportedApiVersion", func() error {
-		ok, err := c.Debug.IsSupportedApiVersion(ctx)
+	check("IsSupportedAPIVersion", func() error {
+		ok, err := c.Debug.IsSupportedAPIVersion(ctx)
 		if err != nil {
 			return err
 		}

@@ -14,11 +14,11 @@ import (
 )
 
 // Pinned versions of the Bee node + API that this client targets. Used
-// by IsSupportedExactVersion / IsSupportedApiVersion. Mirrors bee-js's
+// by IsSupportedExactVersion / IsSupportedAPIVersion. Mirrors bee-js's
 // SUPPORTED_BEE_VERSION_EXACT / SUPPORTED_API_VERSION constants.
 const (
 	SupportedBeeVersionExact = "2.7.0-6ddf9b45"
-	SupportedApiVersion      = "7.3.0"
+	SupportedAPIVersion      = "7.3.0"
 )
 
 // SupportedBeeVersion is SupportedBeeVersionExact stripped of the git
@@ -36,9 +36,9 @@ type HealthResponse struct {
 // against the version pair this client was built for.
 type BeeVersions struct {
 	SupportedBeeVersion    string
-	SupportedBeeApiVersion string
+	SupportedBeeAPIVersion string
 	BeeVersion             string
-	BeeApiVersion          string
+	BeeAPIVersion          string
 }
 
 // Health checks if the Bee node is healthy. Returns true on a 2xx
@@ -117,9 +117,9 @@ func (s *Service) GetVersions(ctx context.Context) (BeeVersions, error) {
 	}
 	return BeeVersions{
 		SupportedBeeVersion:    SupportedBeeVersionExact,
-		SupportedBeeApiVersion: SupportedApiVersion,
+		SupportedBeeAPIVersion: SupportedAPIVersion,
 		BeeVersion:             h.Version,
-		BeeApiVersion:          h.APIVersion,
+		BeeAPIVersion:          h.APIVersion,
 	}, nil
 }
 
@@ -134,16 +134,16 @@ func (s *Service) IsSupportedExactVersion(ctx context.Context) (bool, error) {
 	return h.Version == SupportedBeeVersionExact, nil
 }
 
-// IsSupportedApiVersion reports whether the connected node's apiVersion
-// shares a major-semver number with SupportedApiVersion. This is the
-// looser check most callers want. Mirrors bee-js Bee.isSupportedApiVersion.
-func (s *Service) IsSupportedApiVersion(ctx context.Context) (bool, error) {
+// IsSupportedAPIVersion reports whether the connected node's apiVersion
+// shares a major-semver number with SupportedAPIVersion. This is the
+// looser check most callers want. Mirrors bee-js Bee.isSupportedAPIVersion.
+func (s *Service) IsSupportedAPIVersion(ctx context.Context) (bool, error) {
 	h, err := s.GetHealth(ctx)
 	if err != nil {
 		return false, err
 	}
 	a, err1 := majorSemver(h.APIVersion)
-	b, err2 := majorSemver(SupportedApiVersion)
+	b, err2 := majorSemver(SupportedAPIVersion)
 	if err1 != nil || err2 != nil {
 		return false, errors.Join(err1, err2)
 	}

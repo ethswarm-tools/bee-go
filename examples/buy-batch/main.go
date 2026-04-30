@@ -65,7 +65,7 @@ func main() {
 			fmt.Printf("Success! Batch %s is now usable and ready for uploads!\n", batchID.Hex())
 			break
 		}
-		
+
 		fmt.Print(".")
 		time.Sleep(5 * time.Second)
 	}

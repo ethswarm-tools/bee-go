@@ -122,7 +122,7 @@ func (n *MantarayNode) DetermineType() byte {
 	if len(n.Forks) > 0 {
 		t |= TypeEdge
 	}
-	if bytes.IndexByte(n.Path, PathSeparator) != -1 && !(len(n.Path) == 1 && n.Path[0] == PathSeparator) {
+	if bytes.IndexByte(n.Path, PathSeparator) != -1 && (len(n.Path) != 1 || n.Path[0] != PathSeparator) {
 		t |= TypeWithPathSeparator
 	}
 	if n.Metadata != nil {

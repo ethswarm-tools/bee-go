@@ -20,7 +20,7 @@ func main() {
 	}
 
 	reference := os.Args[1]
-	
+
 	// Default to "downloaded.png" if no output filename is provided
 	outputFilename := "downloaded.png"
 	if len(os.Args) >= 3 {

@@ -89,9 +89,9 @@ func TestStreamCollectionEntries(t *testing.T) {
 	}
 
 	var (
-		mu        sync.Mutex
-		uploaded  int
-		uploadFn  = func(_ context.Context, body []byte) (swarm.Reference, error) {
+		mu       sync.Mutex
+		uploaded int
+		uploadFn = func(_ context.Context, body []byte) (swarm.Reference, error) {
 			addr, err := swarm.CalculateChunkAddress(body)
 			if err != nil {
 				return swarm.Reference{}, err

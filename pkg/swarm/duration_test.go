@@ -26,16 +26,16 @@ func TestDuration_Constructors(t *testing.T) {
 
 func TestDuration_FromString(t *testing.T) {
 	cases := map[string]int64{
-		"1h":         3600,
-		"1.5h":       5400,
-		"5d":         5 * 86400,
-		"2 weeks":    2 * 7 * 86400,
-		"1d 4h":      86400 + 4*3600,
-		"30s":        30,
-		"500ms":      1, // ceil
-		"1Y":         365 * 86400,
-		"2 month":    2 * 30 * 86400,
-		"1d4h5m30s":  86400 + 4*3600 + 5*60 + 30,
+		"1h":        3600,
+		"1.5h":      5400,
+		"5d":        5 * 86400,
+		"2 weeks":   2 * 7 * 86400,
+		"1d 4h":     86400 + 4*3600,
+		"30s":       30,
+		"500ms":     1, // ceil
+		"1Y":        365 * 86400,
+		"2 month":   2 * 30 * 86400,
+		"1d4h5m30s": 86400 + 4*3600 + 5*60 + 30,
 	}
 	for in, want := range cases {
 		got, err := DurationFromString(in)

@@ -553,11 +553,11 @@ func (c *CashoutResult) UnmarshalJSON(b []byte) error {
 // LastCashedCheque, TransactionHash and Result are nil when no cashout
 // has happened yet for that peer.
 type LastCashoutAction struct {
-	Peer            string         `json:"peer"`
-	UncashedAmount  *big.Int       `json:"-"`
-	TransactionHash *string        `json:"transactionHash"`
-	LastCashedCheque *Cheque       `json:"lastCashedCheque"`
-	Result          *CashoutResult `json:"result"`
+	Peer             string         `json:"peer"`
+	UncashedAmount   *big.Int       `json:"-"`
+	TransactionHash  *string        `json:"transactionHash"`
+	LastCashedCheque *Cheque        `json:"lastCashedCheque"`
+	Result           *CashoutResult `json:"result"`
 }
 
 type lastCashoutActionJSON struct {

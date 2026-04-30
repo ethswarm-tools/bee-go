@@ -26,12 +26,12 @@ func TestSize_NegativeRejected(t *testing.T) {
 
 func TestSize_FromString(t *testing.T) {
 	cases := map[string]int64{
-		"28MB":        28 * 1_000_000,
-		"1gb":         1_000_000_000,
-		"1.5GB":       1_500_000_000,
-		"512 kb":      512_000,
-		"2megabytes":  2_000_000,
-		"1tb":         1_000_000_000_000,
+		"28MB":       28 * 1_000_000,
+		"1gb":        1_000_000_000,
+		"1.5GB":      1_500_000_000,
+		"512 kb":     512_000,
+		"2megabytes": 2_000_000,
+		"1tb":        1_000_000_000_000,
 	}
 	for in, want := range cases {
 		got, err := SizeFromString(in)
@@ -51,11 +51,11 @@ func TestSize_FromString(t *testing.T) {
 
 func TestSize_String(t *testing.T) {
 	cases := map[Size]string{
-		mustSize(SizeFromBytes(500)):       "500 B",
-		mustSize(SizeFromKilobytes(1.5)):   "1.50 kB",
-		mustSize(SizeFromMegabytes(2.25)):  "2.25 MB",
-		mustSize(SizeFromGigabytes(1)):     "1.00 GB",
-		mustSize(SizeFromTerabytes(0.5)):   "500.00 GB",
+		mustSize(SizeFromBytes(500)):      "500 B",
+		mustSize(SizeFromKilobytes(1.5)):  "1.50 kB",
+		mustSize(SizeFromMegabytes(2.25)): "2.25 MB",
+		mustSize(SizeFromGigabytes(1)):    "1.00 GB",
+		mustSize(SizeFromTerabytes(0.5)):  "500.00 GB",
 	}
 	for s, want := range cases {
 		if got := s.String(); got != want {

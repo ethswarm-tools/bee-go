@@ -205,8 +205,11 @@ func (s *Service) UpdateFeedWithIndex(ctx context.Context, batchID swarm.BatchID
 	}
 
 	timestamp := make([]byte, 8)
+	//nolint:gosec // unix epoch fits in uint64 for any plausible date.
 	binary.BigEndian.PutUint64(timestamp, uint64(time.Now().Unix()))
-	payload := append(timestamp, data...)
+	payload := make([]byte, 0, len(timestamp)+len(data))
+	payload = append(payload, timestamp...)
+	payload = append(payload, data...)
 
 	ecdsaSigner, err := signer.ToECDSA()
 	if err != nil {

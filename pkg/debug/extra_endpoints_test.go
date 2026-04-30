@@ -317,7 +317,7 @@ func TestService_HealthAndVersions(t *testing.T) {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/health":
-			w.Write([]byte(`{"status":"ok","version":"` + debug.SupportedBeeVersionExact + `","apiVersion":"` + debug.SupportedApiVersion + `"}`))
+			w.Write([]byte(`{"status":"ok","version":"` + debug.SupportedBeeVersionExact + `","apiVersion":"` + debug.SupportedAPIVersion + `"}`))
 		case "/":
 			w.WriteHeader(200)
 		default:
@@ -335,7 +335,7 @@ func TestService_HealthAndVersions(t *testing.T) {
 	}
 
 	v, err := c.GetVersions(context.Background())
-	if err != nil || v.BeeVersion != debug.SupportedBeeVersionExact || v.SupportedBeeApiVersion != debug.SupportedApiVersion {
+	if err != nil || v.BeeVersion != debug.SupportedBeeVersionExact || v.SupportedBeeAPIVersion != debug.SupportedAPIVersion {
 		t.Errorf("GetVersions: %+v err=%v", v, err)
 	}
 
@@ -344,9 +344,9 @@ func TestService_HealthAndVersions(t *testing.T) {
 		t.Errorf("IsSupportedExactVersion: %v err=%v", exact, err)
 	}
 
-	api, err := c.IsSupportedApiVersion(context.Background())
+	api, err := c.IsSupportedAPIVersion(context.Background())
 	if err != nil || !api {
-		t.Errorf("IsSupportedApiVersion: %v err=%v", api, err)
+		t.Errorf("IsSupportedAPIVersion: %v err=%v", api, err)
 	}
 
 	if !c.IsConnected(context.Background()) {
@@ -357,16 +357,16 @@ func TestService_HealthAndVersions(t *testing.T) {
 	}
 }
 
-func TestService_IsSupportedApiVersion_majorMismatch(t *testing.T) {
+func TestService_IsSupportedAPIVersion_majorMismatch(t *testing.T) {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"status":"ok","version":"x","apiVersion":"99.0.0"}`))
 	}))
 	defer s.Close()
 	u, _ := url.Parse(s.URL)
 	c := debug.NewService(u, http.DefaultClient)
-	ok, err := c.IsSupportedApiVersion(context.Background())
+	ok, err := c.IsSupportedAPIVersion(context.Background())
 	if err != nil || ok {
-		t.Errorf("IsSupportedApiVersion = %v err=%v, want false nil", ok, err)
+		t.Errorf("IsSupportedAPIVersion = %v err=%v, want false nil", ok, err)
 	}
 }
 

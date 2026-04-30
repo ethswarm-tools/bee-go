@@ -22,7 +22,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Invalid batch ID: %v", err)
 	}
-	
+
 	// Default to "image.png" if no specific file was provided
 	filePath := "image.png"
 	if len(os.Args) >= 3 {

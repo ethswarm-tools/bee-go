@@ -112,16 +112,16 @@ func (s *Service) UploadCollection(ctx context.Context, batchID swarm.BatchID, d
 			if err != nil {
 				return err
 			}
-			defer f.Close()
+			defer func() { _ = f.Close() }()
 			_, err = io.Copy(tw, f)
 			return err
 		})
 		if err != nil {
-			pw.CloseWithError(err)
+			_ = pw.CloseWithError(err)
 			return
 		}
-		tw.Close()
-		pw.Close()
+		_ = tw.Close()
+		_ = pw.Close()
 	}()
 
 	u := s.baseURL.ResolveReference(&url.URL{Path: "bzz"})
