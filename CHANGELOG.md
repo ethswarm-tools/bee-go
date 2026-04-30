@@ -17,6 +17,12 @@ version bump.
   unused, gosec, gocritic, revive, misspell, gofmt, goimports.
 - `RELEASE.md` documenting the tag flow, pre-release checklist, and
   CHANGELOG conventions.
+- `examples/integration-check` extended with live scenarios for feeds
+  (UpdateFeed → FetchLatestFeedUpdate → IsFeedRetrievable), PSS
+  (subscribe + send loopback), GSOC (mine + subscribe + send), encryption
+  + redundancy upload round-trip, and `TopUpBatch` lifecycle.
+- `PostageBatch.Exists bool` (the `exists` field that Bee returns from
+  `/stamps/{id}`).
 
 ### Changed
 
@@ -27,12 +33,35 @@ version bump.
   `debug.BeeVersions.SupportedBeeApiVersion` → `SupportedBeeAPIVersion`,
   `BeeVersions.BeeApiVersion` → `BeeAPIVersion`,
   `(*debug.Service).IsSupportedApiVersion` → `IsSupportedAPIVersion`.
+- **BREAKING:** `(*pss.Service).PssSend` now requires a `batchID
+  swarm.BatchID` parameter. Bee 2.7+ rejects PSS uploads without
+  `Swarm-Postage-Batch-Id`; the previous signature could never succeed
+  against a live node.
+- **BREAKING:** `postage.PostageBatch.Value *big.Int` → `Amount
+  *big.Int`. Bee returns the per-chunk amount as `"amount"` on
+  `/stamps` and `/stamps/{id}`; the old `"value"` mapping left the
+  field nil for every owned-batch read. The chain-wide
+  `GlobalPostageBatch.Value` (from `/batches`) is unchanged.
 - `BeeResponseError` no longer prints the HTTP status code twice (was
   `… 422 422 Unprocessable Entity`, now `… 422 Unprocessable Entity`).
 - `pkg/manifest`: `MantarayNode.CalculateSelfAddress` and
   `SaveRecursively` now stream the marshaled node through
   `swarm.FileChunker` so nodes whose marshal exceeds `ChunkSize` are
   chunked transparently. Previously these returned an error.
+- Pinned `SupportedBeeVersionExact` → `2.7.1-61fab37b`,
+  `SupportedAPIVersion` → `7.4.1` (the version the live integration
+  check now passes against).
+
+### Fixed
+
+- `(*file.Service).UpdateFeedWithIndex` and `(*gsoc.Service).Send`
+  uploaded only the SOC payload to `/soc/{owner}/{id}` — Bee then
+  computed the CAC over `payload` instead of `span || payload`,
+  signature verification failed, and every live call returned 401.
+  Both now upload `span || payload` (matching `SOCWriter.Upload`).
+- `postage.PostageBatch` `Immutable bool` was tagged `"immutable"` but
+  Bee returns `"immutableFlag"`; the field was always false. Tag
+  corrected.
 
 ## [0.1.0] — 2026-04-30
 

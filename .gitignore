@@ -1,0 +1,7 @@
+# Stray binaries from `go build` at the repo root or examples/.
+/integration-check
+/buy-batch
+/upload-picture
+/download-picture
+/status
+/basic-usage

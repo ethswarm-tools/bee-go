@@ -12,15 +12,19 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"fmt"
 	"io"
+	"math/big"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	bee "github.com/ethersphere/bee-go"
+	"github.com/ethersphere/bee-go/pkg/api"
 	"github.com/ethersphere/bee-go/pkg/file"
+	"github.com/ethersphere/bee-go/pkg/gsoc"
 	"github.com/ethersphere/bee-go/pkg/swarm"
 )
 
@@ -272,6 +276,7 @@ func main() {
 
 	section("Postage — buying a small batch (or reusing BEE_BATCH_ID)")
 	var batchID swarm.BatchID
+	boughtBatch := false
 	if existing := os.Getenv("BEE_BATCH_ID"); existing != "" {
 		check("Reuse BEE_BATCH_ID", func() error {
 			id, err := swarm.BatchIDFromHex(existing)
@@ -297,6 +302,7 @@ func main() {
 				return err
 			}
 			batchID = id
+			boughtBatch = true
 			fmt.Printf("    batchID=%s\n", id.Hex())
 			return nil
 		})
@@ -483,6 +489,261 @@ func main() {
 		})
 	} else {
 		skip("Stream upload", "batch not usable")
+	}
+
+	section("Encryption + redundancy round-trip (UploadData → DownloadData)")
+	if batchUsable {
+		payload := []byte("encrypted+redundant " + time.Now().UTC().Format(time.RFC3339Nano))
+		var encRef swarm.Reference
+		check("UploadData (Encrypt=true, RedundancyLevel=Medium)", func() error {
+			res, err := c.File.UploadData(ctx, batchID, bytes.NewReader(payload), &api.RedundantUploadOptions{
+				UploadOptions:   api.UploadOptions{Encrypt: api.BoolPtr(true)},
+				RedundancyLevel: api.RedundancyLevelMedium,
+			})
+			if err != nil {
+				return err
+			}
+			encRef = res.Reference
+			if l := len(res.Reference.Raw()); l != swarm.EncryptedReferenceLength {
+				return fmt.Errorf("expected encrypted reference (%d bytes), got %d", swarm.EncryptedReferenceLength, l)
+			}
+			fmt.Printf("    encryptedRef=%s (len=%d)\n", res.Reference.Hex(), len(res.Reference.Raw()))
+			return nil
+		})
+		check("DownloadData (encrypted round-trip equality)", func() error {
+			rc, err := c.File.DownloadData(ctx, encRef, nil)
+			if err != nil {
+				return err
+			}
+			defer rc.Close()
+			got, err := io.ReadAll(rc)
+			if err != nil {
+				return err
+			}
+			if !bytes.Equal(got, payload) {
+				return fmt.Errorf("payload mismatch (%d vs %d bytes)", len(got), len(payload))
+			}
+			return nil
+		})
+	} else {
+		skip("Encryption + redundancy round-trip", "batch not usable")
+	}
+
+	section("Feed round-trip (UpdateFeed → FetchLatestFeedUpdate → IsFeedRetrievable)")
+	if batchUsable {
+		ecdsaKey, err := crypto.GenerateKey()
+		if err != nil {
+			fatalf("GenerateKey for feed: %v", err)
+		}
+		signer, err := swarm.NewPrivateKey(crypto.FromECDSA(ecdsaKey))
+		if err != nil {
+			fatalf("swarm.NewPrivateKey: %v", err)
+		}
+		owner := signer.PublicKey().Address()
+		feedTopic := swarm.TopicFromString("integration-feed-" + time.Now().Format(time.RFC3339Nano))
+		feedPayload := []byte("feed payload " + time.Now().UTC().Format(time.RFC3339Nano))
+
+		check("UpdateFeed (idx=0)", func() error {
+			res, err := c.File.UpdateFeed(ctx, batchID, signer, feedTopic, feedPayload)
+			if err != nil {
+				return err
+			}
+			fmt.Printf("    feedUpdateRef=%s\n", res.Reference.Hex())
+			return nil
+		})
+		check("FetchLatestFeedUpdate (idx + payload equality)", func() error {
+			upd, err := c.File.FetchLatestFeedUpdate(ctx, owner, feedTopic)
+			if err != nil {
+				return err
+			}
+			if upd.Index != 0 {
+				return fmt.Errorf("index=%d want 0", upd.Index)
+			}
+			if upd.IndexNext != 1 {
+				return fmt.Errorf("indexNext=%d want 1", upd.IndexNext)
+			}
+			if len(upd.Payload) < 8 {
+				return fmt.Errorf("payload too short (%d bytes)", len(upd.Payload))
+			}
+			if !bytes.Equal(upd.Payload[8:], feedPayload) {
+				return fmt.Errorf("payload mismatch")
+			}
+			fmt.Printf("    idx=%d idxNext=%d payload=%dB\n", upd.Index, upd.IndexNext, len(upd.Payload))
+			return nil
+		})
+		check("IsFeedRetrievable (idx=0)", func() error {
+			idx := uint64(0)
+			ok, err := c.File.IsFeedRetrievable(ctx, owner, feedTopic, &idx, nil)
+			if err != nil {
+				return err
+			}
+			if !ok {
+				return fmt.Errorf("feed not retrievable")
+			}
+			return nil
+		})
+	} else {
+		skip("Feed round-trip", "batch not usable")
+	}
+
+	section("PSS send/subscribe (single-node loopback)")
+	if batchUsable {
+		addr, err := c.Debug.Addresses(ctx)
+		if err != nil {
+			fatalf("Addresses: %v", err)
+		}
+		// Target = first 2 bytes (4 hex chars) of own overlay so Bee delivers
+		// the message back to us.
+		target := addr.Overlay[:4]
+		pssTopic := swarm.TopicFromString("integration-pss-" + time.Now().Format(time.RFC3339Nano))
+		pssPayload := []byte("pss hello " + time.Now().UTC().Format(time.RFC3339Nano))
+
+		check("PSS subscribe → send → receive (timeout 30s)", func() error {
+			subCtx, cancel := context.WithCancel(ctx)
+			defer cancel()
+			sub, err := c.PSS.PssSubscribe(subCtx, pssTopic)
+			if err != nil {
+				return fmt.Errorf("subscribe: %w", err)
+			}
+			defer sub.Cancel()
+
+			// Brief moment for the websocket to register on the server.
+			time.Sleep(300 * time.Millisecond)
+
+			if err := c.PSS.PssSend(ctx, batchID, pssTopic, target, bytes.NewReader(pssPayload), swarm.PublicKey{}); err != nil {
+				return fmt.Errorf("send: %w", err)
+			}
+			select {
+			case msg, ok := <-sub.Messages:
+				if !ok {
+					return fmt.Errorf("subscription closed before message")
+				}
+				if !bytes.Equal(msg, pssPayload) {
+					return fmt.Errorf("payload mismatch (got %d bytes, want %d)", len(msg), len(pssPayload))
+				}
+				fmt.Printf("    received %d bytes via target=%s\n", len(msg), target)
+				return nil
+			case e := <-sub.Errors:
+				return fmt.Errorf("subscription error: %w", e)
+			case <-time.After(30 * time.Second):
+				return fmt.Errorf("timeout waiting for PSS message")
+			}
+		})
+	} else {
+		skip("PSS send/subscribe", "batch not usable")
+	}
+
+	section("GSOC send/subscribe (single-node loopback, mined signer)")
+	if batchUsable {
+		addr, err := c.Debug.Addresses(ctx)
+		if err != nil {
+			fatalf("Addresses: %v", err)
+		}
+		overlayBytes, err := hex.DecodeString(addr.Overlay)
+		if err != nil {
+			fatalf("decode overlay: %v", err)
+		}
+		gsocIDBytes := make([]byte, 32)
+		copy(gsocIDBytes, []byte("integration-gsoc-"+time.Now().Format(time.RFC3339Nano)))
+		identifier, err := swarm.NewIdentifier(gsocIDBytes)
+		if err != nil {
+			fatalf("NewIdentifier: %v", err)
+		}
+		gsocPayload := []byte("gsoc hello " + time.Now().UTC().Format(time.RFC3339Nano))
+
+		var minedSigner swarm.PrivateKey
+		check("GSOCMine (proximity 12, bee-js default)", func() error {
+			ecdsaKey, err := swarm.GSOCMine(overlayBytes, gsocIDBytes, 12)
+			if err != nil {
+				return err
+			}
+			signer, err := swarm.NewPrivateKey(crypto.FromECDSA(ecdsaKey))
+			if err != nil {
+				return err
+			}
+			minedSigner = signer
+			fmt.Printf("    minedOwner=%s\n", signer.PublicKey().Address().Hex())
+			return nil
+		})
+		check("GSOC subscribe → send → receive (timeout 60s)", func() error {
+			subCtx, cancel := context.WithCancel(ctx)
+			defer cancel()
+			owner := minedSigner.PublicKey().Address()
+			sub, err := c.GSOC.Subscribe(subCtx, owner, identifier)
+			if err != nil {
+				return fmt.Errorf("subscribe: %w", err)
+			}
+			defer sub.Cancel()
+
+			time.Sleep(300 * time.Millisecond)
+
+			if _, err := c.GSOC.Send(ctx, batchID, minedSigner, identifier, gsocPayload, nil); err != nil {
+				return fmt.Errorf("send: %w", err)
+			}
+			expectedAddr, _ := gsoc.SOCAddress(identifier, owner)
+			select {
+			case msg, ok := <-sub.Messages:
+				if !ok {
+					return fmt.Errorf("subscription closed before message")
+				}
+				if !bytes.Equal(msg, gsocPayload) {
+					return fmt.Errorf("payload mismatch (got %d bytes, want %d)", len(msg), len(gsocPayload))
+				}
+				fmt.Printf("    received %d bytes at socAddr=%s\n", len(msg), expectedAddr.Hex())
+				return nil
+			case e := <-sub.Errors:
+				return fmt.Errorf("subscription error: %w", e)
+			case <-time.After(60 * time.Second):
+				return fmt.Errorf("timeout waiting for GSOC message")
+			}
+		})
+	} else {
+		skip("GSOC send/subscribe", "batch not usable")
+	}
+
+	section("Postage lifecycle (TopUpBatch always; DiluteBatch only on a fresh batch)")
+	if batchUsable {
+		check("TopUpBatch (+100 PLUR per chunk)", func() error {
+			before, err := c.Postage.GetPostageBatch(ctx, batchID)
+			if err != nil {
+				return err
+			}
+			// Bee's POST /stamps/topup returns 202 Accepted once the on-chain
+			// tx is queued. The /stamps amount only updates after the next
+			// block (5-12s on Gnosis/Sepolia), and the test would race the
+			// chain. We verify the request succeeded; the chain effect is a
+			// node concern beyond this client's surface.
+			if err := c.Postage.TopUpBatch(ctx, batchID, big.NewInt(100)); err != nil {
+				return err
+			}
+			fmt.Printf("    accepted; pre-call amount=%s (chain confirmation not asserted)\n", before.Amount.String())
+			return nil
+		})
+		if boughtBatch {
+			check("DiluteBatch (depth+1)", func() error {
+				before, err := c.Postage.GetPostageBatch(ctx, batchID)
+				if err != nil {
+					return err
+				}
+				newDepth := before.Depth + 1
+				if err := c.Postage.DiluteBatch(ctx, batchID, newDepth); err != nil {
+					return err
+				}
+				after, err := c.Postage.GetPostageBatch(ctx, batchID)
+				if err != nil {
+					return err
+				}
+				if after.Depth != newDepth {
+					return fmt.Errorf("depth: %d → %d, want %d", before.Depth, after.Depth, newDepth)
+				}
+				fmt.Printf("    depth: %d → %d\n", before.Depth, after.Depth)
+				return nil
+			})
+		} else {
+			skip("DiluteBatch", "BEE_BATCH_ID is reused — declining to mutate user-supplied batch")
+		}
+	} else {
+		skip("Postage lifecycle", "batch not usable")
 	}
 
 	fmt.Println()

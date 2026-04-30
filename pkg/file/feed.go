@@ -224,8 +224,11 @@ func (s *Service) UpdateFeedWithIndex(ctx context.Context, batchID swarm.BatchID
 		return api.UploadResult{}, err
 	}
 
+	full := make([]byte, 0, len(soc.Span)+len(soc.Payload))
+	full = append(full, soc.Span...)
+	full = append(full, soc.Payload...)
 	owner := signer.PublicKey().Address()
-	return s.UploadSOC(ctx, batchID, owner, identifier, signature, soc.Payload, nil)
+	return s.UploadSOC(ctx, batchID, owner, identifier, signature, full, nil)
 }
 
 // keccak256 wrapper local to this file to avoid pulling go-ethereum into the

@@ -14,30 +14,32 @@ import (
 // PostageBatch represents a Swarm postage batch.
 type PostageBatch struct {
 	BatchID     swarm.BatchID `json:"batchID"`
-	Value       *big.Int      `json:"-"`
+	Amount      *big.Int      `json:"-"`
 	Start       uint64        `json:"start"`
 	Owner       string        `json:"owner"`
 	Depth       uint8         `json:"depth"`
 	BucketDepth uint8         `json:"bucketDepth"`
-	Immutable   bool          `json:"immutable"`
+	Immutable   bool          `json:"immutableFlag"`
 	BatchTTL    int64         `json:"batchTTL"`
 	Utilization uint32        `json:"utilization"`
 	Usable      bool          `json:"usable"`
+	Exists      bool          `json:"exists"`
 	Label       string        `json:"label"`
 	BlockNumber uint64        `json:"blockNumber"`
 }
 
 type postageBatchJSON struct {
 	BatchID     string `json:"batchID"`
-	Value       string `json:"value"`
+	Amount      string `json:"amount"`
 	Start       uint64 `json:"start"`
 	Owner       string `json:"owner"`
 	Depth       uint8  `json:"depth"`
 	BucketDepth uint8  `json:"bucketDepth"`
-	Immutable   bool   `json:"immutable"`
+	Immutable   bool   `json:"immutableFlag"`
 	BatchTTL    int64  `json:"batchTTL"`
 	Utilization uint32 `json:"utilization"`
 	Usable      bool   `json:"usable"`
+	Exists      bool   `json:"exists"`
 	Label       string `json:"label"`
 	BlockNumber uint64 `json:"blockNumber"`
 }
@@ -61,15 +63,16 @@ func (pb *PostageBatch) UnmarshalJSON(b []byte) error {
 	pb.BatchTTL = v.BatchTTL
 	pb.Utilization = v.Utilization
 	pb.Usable = v.Usable
+	pb.Exists = v.Exists
 	pb.Label = v.Label
 	pb.BlockNumber = v.BlockNumber
 
-	if v.Value != "" {
+	if v.Amount != "" {
 		val := new(big.Int)
-		if _, ok := val.SetString(v.Value, 10); !ok {
-			return fmt.Errorf("invalid big.Int string: %s", v.Value)
+		if _, ok := val.SetString(v.Amount, 10); !ok {
+			return fmt.Errorf("invalid big.Int string: %s", v.Amount)
 		}
-		pb.Value = val
+		pb.Amount = val
 	}
 	return nil
 }

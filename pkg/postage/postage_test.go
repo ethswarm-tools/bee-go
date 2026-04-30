@@ -29,7 +29,7 @@ func TestService_GetPostageBatches(t *testing.T) {
 					w.WriteHeader(http.StatusNotFound)
 					return
 				}
-				w.Write([]byte(`{"stamps": [{"batchID": "` + testBatchHex + `", "value": "1000", "start": 0, "owner": "abc", "depth": 17, "bucketDepth": 16, "immutable": false, "batchTTL": 86400, "utilization": 0, "usable": true, "label": "x", "blockNumber": 12}]}`))
+				w.Write([]byte(`{"stamps": [{"batchID": "` + testBatchHex + `", "amount": "1000", "start": 0, "owner": "abc", "depth": 17, "bucketDepth": 16, "immutableFlag": false, "batchTTL": 86400, "utilization": 0, "usable": true, "label": "x", "blockNumber": 12}]}`))
 			},
 			wantLen: 1,
 		},
@@ -65,8 +65,8 @@ func TestService_GetPostageBatches(t *testing.T) {
 				t.Errorf("Service.GetPostageBatches() len = %v, want %v", len(got), tt.wantLen)
 			}
 			if !tt.wantErr && len(got) > 0 {
-				if got[0].Value.Cmp(big.NewInt(1000)) != 0 {
-					t.Errorf("Service.GetPostageBatches() value = %v, want 1000", got[0].Value)
+				if got[0].Amount.Cmp(big.NewInt(1000)) != 0 {
+					t.Errorf("Service.GetPostageBatches() amount = %v, want 1000", got[0].Amount)
 				}
 			}
 		})
@@ -216,7 +216,7 @@ func TestService_GetPostageBatch(t *testing.T) {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasSuffix(r.URL.Path, "/stamps/"+testBatchHex) && r.Method == http.MethodGet {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"batchID": "` + testBatchHex + `", "value": "200"}`))
+			w.Write([]byte(`{"batchID": "` + testBatchHex + `", "amount": "200"}`))
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -233,7 +233,7 @@ func TestService_GetPostageBatch(t *testing.T) {
 	if batch.BatchID.Hex() != testBatchHex {
 		t.Errorf("BatchID = %v, want %s", batch.BatchID.Hex(), testBatchHex)
 	}
-	if batch.Value.Cmp(big.NewInt(200)) != 0 {
-		t.Errorf("Batch Value = %v, want 200", batch.Value)
+	if batch.Amount.Cmp(big.NewInt(200)) != 0 {
+		t.Errorf("Batch Amount = %v, want 200", batch.Amount)
 	}
 }

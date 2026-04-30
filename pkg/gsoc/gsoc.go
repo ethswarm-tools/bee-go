@@ -64,7 +64,10 @@ func (s *Service) Send(ctx context.Context, batchID swarm.BatchID, signer swarm.
 	if err != nil {
 		return api.UploadResult{}, err
 	}
-	return s.file.UploadSOC(ctx, batchID, owner, identifier, signature, soc.Payload, opts)
+	full := make([]byte, 0, len(soc.Span)+len(soc.Payload))
+	full = append(full, soc.Span...)
+	full = append(full, soc.Payload...)
+	return s.file.UploadSOC(ctx, batchID, owner, identifier, signature, full, opts)
 }
 
 // Subscription is an active GSOC subscription. Mirrors bee-js
