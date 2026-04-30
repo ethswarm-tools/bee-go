@@ -84,6 +84,9 @@ live on `Client` itself in `storage.go`.
 | `bee.uploadFile(stamp, data, name, opts)` | `client.File.UploadFile(ctx, batchID, data, name, contentType, opts)` |
 | `bee.uploadFiles(stamp, files, opts)` | `client.File.UploadCollectionEntries(ctx, batchID, entries, opts)` |
 | `bee.uploadFilesFromDirectory(stamp, dir, opts)` | `client.File.UploadCollection(ctx, batchID, dir, opts)` |
+| `bee.streamFiles(stamp, files, ...)` | `client.File.StreamCollectionEntries(ctx, batchID, entries, opts)` (chunks files locally, uploads chunk-by-chunk, saves manifest recursively) |
+| `bee.streamDirectory(stamp, dir, ...)` | `client.File.StreamDirectory(ctx, batchID, dir, opts)` |
+| `bee.hashDirectory(dir)` | `file.HashDirectory(dir)` (offline — no upload, returns the manifest reference) — entries variant `file.HashCollectionEntries(entries)` |
 | `bee.uploadChunk(stamp, data, opts)` | `client.File.UploadChunk(ctx, batchID, data, opts)` |
 | `bee.downloadData(ref, opts)` | `client.File.DownloadData(ctx, ref, opts)` |
 | `bee.probeData(ref)` | `client.File.ProbeData(ctx, ref)` (HEAD /bytes — Content-Length only) |
