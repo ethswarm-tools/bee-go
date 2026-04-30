@@ -99,6 +99,8 @@ live on `Client` itself in `storage.go`.
 | `bee.topUpBatch(id, amount)` | `client.Postage.TopUpBatch(ctx, batchID, amount)` |
 | `bee.diluteBatch(id, depth)` | `client.Postage.DiluteBatch(ctx, batchID, depth)` |
 | `bee.getPostageBatch(id)` / `getAllPostageBatch()` | `client.Postage.GetPostageBatch(ctx, batchID)` / `GetPostageBatches(ctx)` |
+| `bee.getPostageBatchBuckets(id)` | `client.Postage.GetPostageBatchBuckets(ctx, batchID)` |
+| `bee.getGlobalPostageBatches()` (and the deprecated `getAllGlobalPostageBatch()`) | `client.Postage.GetGlobalPostageBatches(ctx)` (alias `GetAllGlobalPostageBatch`) |
 | `bee.buyStorage(size, duration, opts)` | `client.BuyStorage(ctx, size, duration, opts)` |
 | `bee.getStorageCost(size, duration)` | `client.GetStorageCost(ctx, size, duration, opts)` |
 | `bee.extendStorage(id, size, duration)` | `client.ExtendStorage(ctx, batchID, size, duration, opts)` |
@@ -110,7 +112,7 @@ live on `Client` itself in `storage.go`.
 | `bee.calculateTopUpForBzz(depth, bzz)` | `client.CalculateTopUpForBzz(ctx, depth, bzz, opts)` |
 | `bee.pin(ref)` / `unpin(ref)` | `client.API.Pin(ctx, ref)` / `Unpin(ctx, ref)` |
 | `bee.getPin(ref)` / `getAllPins()` | `client.API.GetPin(ctx, ref)` / `ListPins(ctx)` |
-| `bee.createTag()` / `getTag(uid)` | `client.API.CreateTag(ctx)` / `GetTag(ctx, uid)` |
+| `bee.createTag()` / `getTag(uid)` / `retrieveTag(uid)` | `client.API.CreateTag(ctx)` / `GetTag(ctx, uid)` (alias `RetrieveTag`) |
 | `bee.getAllTags(opts)` / `deleteTag(uid)` / `updateTag(uid, tag)` | `client.API.ListTags(ctx, offset, limit)` / `DeleteTag(ctx, uid)` / `UpdateTag(ctx, uid, tag)` |
 | `bee.createEnvelope(stamp, ref)` | `client.API.PostEnvelope(ctx, batchID, ref)` |
 | `bee.getGrantees(ref)` / `createGrantees(stamp, list)` / `patchGrantees(stamp, ref, hist, add, rev)` | `client.API.GetGrantees(ctx, ref)` / `CreateGrantees(ctx, batchID, list)` / `PatchGrantees(ctx, batchID, ref, hist, add, rev)` |
@@ -121,8 +123,12 @@ live on `Client` itself in `storage.go`.
 | `bee.gsocMine(overlay, id, prox)` | `swarm.GSOCMine(target, identifier, proximity)` |
 | `bee.gsocSend(stamp, signer, id, data)` | `client.GSOC.Send(ctx, batchID, signer, id, data, opts)` |
 | `bee.gsocSubscribe(addr, id, handler)` | `client.GSOC.Subscribe(ctx, owner, id)` |
-| `bee.isConnected()` / `bee.getHealth()` | `client.Debug.Health(ctx)` |
+| `bee.isConnected()` / `checkConnection()` | `client.Debug.IsConnected(ctx)` / `CheckConnection(ctx)` (pings the base URL) |
+| `bee.getHealth()` | `client.Debug.GetHealth(ctx)` (structured) — `Health(ctx)` returns just a bool |
 | `bee.getReadiness()` | `client.Debug.Readiness(ctx)` |
+| `bee.getVersions()` | `client.Debug.GetVersions(ctx)` |
+| `bee.isSupportedExactVersion()` / `isSupportedApiVersion()` | `client.Debug.IsSupportedExactVersion(ctx)` / `IsSupportedApiVersion(ctx)` |
+| `bee.isGateway()` | `client.Debug.IsGateway(ctx)` |
 | `bee.getNodeInfo()` | `client.Debug.NodeInfo(ctx)` |
 | `bee.getStatus()` | `client.Debug.Status(ctx)` |
 | `bee.getNodeAddresses()` | `client.Debug.Addresses(ctx)` |

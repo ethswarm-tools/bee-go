@@ -74,9 +74,12 @@ func (pb *PostageBatch) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// GetPostageBatches retrieves all postage batches.
+// GetPostageBatches retrieves all postage batches owned by this node.
+// Hits GET /stamps; the response includes utilization, label and other
+// owner-only fields. For the chain-wide list of every batch (without
+// owner-only fields) see GetGlobalPostageBatches.
 func (s *Service) GetPostageBatches(ctx context.Context) ([]PostageBatch, error) {
-	u := s.baseURL.ResolveReference(&url.URL{Path: "batches"})
+	u := s.baseURL.ResolveReference(&url.URL{Path: "stamps"})
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
 		return nil, err
@@ -93,12 +96,135 @@ func (s *Service) GetPostageBatches(ctx context.Context) ([]PostageBatch, error)
 	}
 
 	var res struct {
-		Batches []PostageBatch `json:"batches"`
+		Stamps []PostageBatch `json:"stamps"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return nil, err
+	}
+	return res.Stamps, nil
+}
+
+// GlobalPostageBatch is one entry in GET /batches. The chain-wide view
+// drops owner-only fields (utilization, usable, label, blockNumber).
+type GlobalPostageBatch struct {
+	BatchID     swarm.BatchID `json:"batchID"`
+	Value       *big.Int      `json:"-"`
+	Start       uint64        `json:"start"`
+	Owner       string        `json:"owner"`
+	Depth       uint8         `json:"depth"`
+	BucketDepth uint8         `json:"bucketDepth"`
+	Immutable   bool          `json:"immutable"`
+	BatchTTL    int64         `json:"batchTTL"`
+}
+
+type globalPostageBatchJSON struct {
+	BatchID     string `json:"batchID"`
+	Value       string `json:"value"`
+	Start       uint64 `json:"start"`
+	Owner       string `json:"owner"`
+	Depth       uint8  `json:"depth"`
+	BucketDepth uint8  `json:"bucketDepth"`
+	Immutable   bool   `json:"immutable"`
+	BatchTTL    int64  `json:"batchTTL"`
+}
+
+func (g *GlobalPostageBatch) UnmarshalJSON(b []byte) error {
+	var v globalPostageBatchJSON
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	id, err := swarm.BatchIDFromHex(v.BatchID)
+	if err != nil {
+		return fmt.Errorf("invalid batchID: %w", err)
+	}
+	g.BatchID = id
+	g.Start = v.Start
+	g.Owner = v.Owner
+	g.Depth = v.Depth
+	g.BucketDepth = v.BucketDepth
+	g.Immutable = v.Immutable
+	g.BatchTTL = v.BatchTTL
+	if v.Value != "" {
+		val := new(big.Int)
+		if _, ok := val.SetString(v.Value, 10); !ok {
+			return fmt.Errorf("invalid big.Int string: %s", v.Value)
+		}
+		g.Value = val
+	}
+	return nil
+}
+
+// GetGlobalPostageBatches returns every postage batch currently visible
+// on-chain, regardless of owner. Mirrors bee-js getGlobalPostageBatches.
+// Hits GET /batches.
+func (s *Service) GetGlobalPostageBatches(ctx context.Context) ([]GlobalPostageBatch, error) {
+	u := s.baseURL.ResolveReference(&url.URL{Path: "batches"})
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if err := swarm.CheckResponse(resp); err != nil {
+		return nil, err
+	}
+	var res struct {
+		Batches []GlobalPostageBatch `json:"batches"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
 		return nil, err
 	}
 	return res.Batches, nil
+}
+
+// GetAllGlobalPostageBatch is the bee-js name for GetGlobalPostageBatches.
+//
+// Deprecated: bee-js scheduled the singular form for removal; prefer
+// GetGlobalPostageBatches.
+func (s *Service) GetAllGlobalPostageBatch(ctx context.Context) ([]GlobalPostageBatch, error) {
+	return s.GetGlobalPostageBatches(ctx)
+}
+
+// BatchBucket is one entry in PostageBatchBuckets.Buckets — the
+// collision count for one of the 2^bucketDepth buckets in a batch.
+type BatchBucket struct {
+	BucketID   uint32 `json:"bucketID"`
+	Collisions uint32 `json:"collisions"`
+}
+
+// PostageBatchBuckets is the response from GET /stamps/{id}/buckets:
+// per-bucket fill stats useful for spotting near-overcommit batches.
+type PostageBatchBuckets struct {
+	Depth            uint8         `json:"depth"`
+	BucketDepth      uint8         `json:"bucketDepth"`
+	BucketUpperBound uint32        `json:"bucketUpperBound"`
+	Buckets          []BatchBucket `json:"buckets"`
+}
+
+// GetPostageBatchBuckets returns per-bucket collision stats for an
+// owned postage batch. Mirrors bee-js getPostageBatchBuckets.
+func (s *Service) GetPostageBatchBuckets(ctx context.Context, batchID swarm.BatchID) (PostageBatchBuckets, error) {
+	u := s.baseURL.ResolveReference(&url.URL{Path: "stamps/" + batchID.Hex() + "/buckets"})
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return PostageBatchBuckets{}, err
+	}
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return PostageBatchBuckets{}, err
+	}
+	defer resp.Body.Close()
+	if err := swarm.CheckResponse(resp); err != nil {
+		return PostageBatchBuckets{}, err
+	}
+	var res PostageBatchBuckets
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return PostageBatchBuckets{}, err
+	}
+	return res, nil
 }
 
 // CreatePostageBatch purchases a new postage batch.

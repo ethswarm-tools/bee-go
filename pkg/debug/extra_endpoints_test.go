@@ -312,3 +312,97 @@ func TestService_CashoutOps(t *testing.T) {
 		t.Errorf("gas-price header = %q", gotGasPrice)
 	}
 }
+
+func TestService_HealthAndVersions(t *testing.T) {
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/health":
+			w.Write([]byte(`{"status":"ok","version":"` + debug.SupportedBeeVersionExact + `","apiVersion":"` + debug.SupportedApiVersion + `"}`))
+		case "/":
+			w.WriteHeader(200)
+		default:
+			w.WriteHeader(404)
+		}
+	}))
+	defer s.Close()
+
+	u, _ := url.Parse(s.URL)
+	c := debug.NewService(u, http.DefaultClient)
+
+	h, err := c.GetHealth(context.Background())
+	if err != nil || h.Status != "ok" || h.Version != debug.SupportedBeeVersionExact {
+		t.Fatalf("GetHealth: %+v err=%v", h, err)
+	}
+
+	v, err := c.GetVersions(context.Background())
+	if err != nil || v.BeeVersion != debug.SupportedBeeVersionExact || v.SupportedBeeApiVersion != debug.SupportedApiVersion {
+		t.Errorf("GetVersions: %+v err=%v", v, err)
+	}
+
+	exact, err := c.IsSupportedExactVersion(context.Background())
+	if err != nil || !exact {
+		t.Errorf("IsSupportedExactVersion: %v err=%v", exact, err)
+	}
+
+	api, err := c.IsSupportedApiVersion(context.Background())
+	if err != nil || !api {
+		t.Errorf("IsSupportedApiVersion: %v err=%v", api, err)
+	}
+
+	if !c.IsConnected(context.Background()) {
+		t.Errorf("IsConnected = false")
+	}
+	if err := c.CheckConnection(context.Background()); err != nil {
+		t.Errorf("CheckConnection: %v", err)
+	}
+}
+
+func TestService_IsSupportedApiVersion_majorMismatch(t *testing.T) {
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"status":"ok","version":"x","apiVersion":"99.0.0"}`))
+	}))
+	defer s.Close()
+	u, _ := url.Parse(s.URL)
+	c := debug.NewService(u, http.DefaultClient)
+	ok, err := c.IsSupportedApiVersion(context.Background())
+	if err != nil || ok {
+		t.Errorf("IsSupportedApiVersion = %v err=%v, want false nil", ok, err)
+	}
+}
+
+func TestService_IsGateway(t *testing.T) {
+	cases := []struct {
+		name   string
+		status int
+		body   string
+		want   bool
+	}{
+		{"gateway-on", 200, `{"gateway":true}`, true},
+		{"gateway-off-404", 404, "", false},
+		{"gateway-off-flag", 200, `{"gateway":false}`, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/gateway" {
+					w.WriteHeader(tc.status)
+					if tc.body != "" {
+						w.Write([]byte(tc.body))
+					}
+					return
+				}
+				w.WriteHeader(404)
+			}))
+			defer s.Close()
+			u, _ := url.Parse(s.URL)
+			c := debug.NewService(u, http.DefaultClient)
+			got, err := c.IsGateway(context.Background())
+			if err != nil {
+				t.Fatalf("IsGateway: %v", err)
+			}
+			if got != tc.want {
+				t.Errorf("got = %v want %v", got, tc.want)
+			}
+		})
+	}
+}

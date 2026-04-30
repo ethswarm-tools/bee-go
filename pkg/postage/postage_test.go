@@ -25,7 +25,11 @@ func TestService_GetPostageBatches(t *testing.T) {
 		{
 			name: "ok",
 			handler: func(w http.ResponseWriter, r *http.Request) {
-				w.Write([]byte(`{"batches": [{"batchID": "` + testBatchHex + `", "value": "1000", "start": 0, "owner": "abc", "depth": 17, "bucketDepth": 16, "immutable": false, "batchTTL": 86400}]}`))
+				if r.URL.Path != "/stamps" {
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
+				w.Write([]byte(`{"stamps": [{"batchID": "` + testBatchHex + `", "value": "1000", "start": 0, "owner": "abc", "depth": 17, "bucketDepth": 16, "immutable": false, "batchTTL": 86400, "utilization": 0, "usable": true, "label": "x", "blockNumber": 12}]}`))
 			},
 			wantLen: 1,
 		},
@@ -66,6 +70,67 @@ func TestService_GetPostageBatches(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestService_GetGlobalPostageBatches(t *testing.T) {
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/batches" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.Write([]byte(`{"batches": [
+			{"batchID": "` + testBatchHex + `", "value": "1000", "start": 100, "owner": "0xabc", "depth": 17, "bucketDepth": 16, "immutable": false, "batchTTL": 86400}
+		]}`))
+	}))
+	defer s.Close()
+
+	u, _ := url.Parse(s.URL)
+	c := postage.NewService(u, http.DefaultClient)
+	got, err := c.GetGlobalPostageBatches(context.Background())
+	if err != nil {
+		t.Fatalf("GetGlobalPostageBatches: %v", err)
+	}
+	if len(got) != 1 || got[0].BatchID.Hex() != testBatchHex || got[0].Value.Cmp(big.NewInt(1000)) != 0 {
+		t.Errorf("got = %+v", got)
+	}
+
+	// Deprecated alias hits the same endpoint.
+	got2, err := c.GetAllGlobalPostageBatch(context.Background())
+	if err != nil || len(got2) != 1 {
+		t.Errorf("GetAllGlobalPostageBatch: got %v err %v", got2, err)
+	}
+}
+
+func TestService_GetPostageBatchBuckets(t *testing.T) {
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/stamps/"+testBatchHex+"/buckets" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.Write([]byte(`{
+			"depth": 17,
+			"bucketDepth": 16,
+			"bucketUpperBound": 2,
+			"buckets": [
+				{"bucketID": 0, "collisions": 1},
+				{"bucketID": 1, "collisions": 2}
+			]
+		}`))
+	}))
+	defer s.Close()
+
+	u, _ := url.Parse(s.URL)
+	c := postage.NewService(u, http.DefaultClient)
+	got, err := c.GetPostageBatchBuckets(context.Background(), swarm.MustBatchID(testBatchHex))
+	if err != nil {
+		t.Fatalf("GetPostageBatchBuckets: %v", err)
+	}
+	if got.Depth != 17 || got.BucketDepth != 16 || got.BucketUpperBound != 2 {
+		t.Errorf("got = %+v", got)
+	}
+	if len(got.Buckets) != 2 || got.Buckets[1].Collisions != 2 {
+		t.Errorf("buckets = %+v", got.Buckets)
 	}
 }
 

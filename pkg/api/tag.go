@@ -76,6 +76,11 @@ func (s *Service) GetTag(ctx context.Context, uid uint32) (Tag, error) {
 	return t, nil
 }
 
+// RetrieveTag is the bee-js name for GetTag.
+func (s *Service) RetrieveTag(ctx context.Context, uid uint32) (Tag, error) {
+	return s.GetTag(ctx, uid)
+}
+
 // ListTags retrieves a list of tags.
 func (s *Service) ListTags(ctx context.Context, offset int, limit int) ([]Tag, error) {
 	u := s.baseURL.ResolveReference(&url.URL{Path: "tags"})

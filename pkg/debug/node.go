@@ -4,13 +4,45 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/ethersphere/bee-go/pkg/swarm"
 )
 
-// Health checks if the Bee node is healthy.
+// Pinned versions of the Bee node + API that this client targets. Used
+// by IsSupportedExactVersion / IsSupportedApiVersion. Mirrors bee-js's
+// SUPPORTED_BEE_VERSION_EXACT / SUPPORTED_API_VERSION constants.
+const (
+	SupportedBeeVersionExact = "2.7.0-6ddf9b45"
+	SupportedApiVersion      = "7.3.0"
+)
+
+// SupportedBeeVersion is SupportedBeeVersionExact stripped of the git
+// short-sha suffix.
+var SupportedBeeVersion = strings.SplitN(SupportedBeeVersionExact, "-", 2)[0]
+
+// HealthResponse is the structured response from GET /health.
+type HealthResponse struct {
+	Status     string `json:"status"`
+	Version    string `json:"version"`
+	APIVersion string `json:"apiVersion"`
+}
+
+// BeeVersions reports the version pair the connected node advertises
+// against the version pair this client was built for.
+type BeeVersions struct {
+	SupportedBeeVersion    string
+	SupportedBeeApiVersion string
+	BeeVersion             string
+	BeeApiVersion          string
+}
+
+// Health checks if the Bee node is healthy. Returns true on a 2xx
+// response from /health. For the structured payload (version,
+// apiVersion, status) use GetHealth.
 func (s *Service) Health(ctx context.Context) (bool, error) {
 	u := s.baseURL.ResolveReference(&url.URL{Path: "health"})
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
@@ -28,6 +60,130 @@ func (s *Service) Health(ctx context.Context) (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+// IsConnected reports whether the base API URL responds at all (does
+// not require /health). Mirrors bee-js Bee.isConnected.
+func (s *Service) IsConnected(ctx context.Context) bool {
+	return s.CheckConnection(ctx) == nil
+}
+
+// CheckConnection pings the base URL and returns the response error if
+// the node is unreachable. Mirrors bee-js Bee.checkConnection.
+func (s *Service) CheckConnection(ctx context.Context) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, s.baseURL.String(), nil)
+	if err != nil {
+		return err
+	}
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	return swarm.CheckResponse(resp)
+}
+
+// GetHealth returns the structured /health payload (version, apiVersion,
+// status). Mirrors bee-js Bee.getHealth.
+func (s *Service) GetHealth(ctx context.Context) (HealthResponse, error) {
+	u := s.baseURL.ResolveReference(&url.URL{Path: "health"})
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return HealthResponse{}, err
+	}
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return HealthResponse{}, err
+	}
+	defer resp.Body.Close()
+	if err := swarm.CheckResponse(resp); err != nil {
+		return HealthResponse{}, err
+	}
+	var res HealthResponse
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return HealthResponse{}, err
+	}
+	return res, nil
+}
+
+// GetVersions returns the version pair the connected node advertises
+// alongside the version pair this client targets. Mirrors bee-js
+// Bee.getVersions.
+func (s *Service) GetVersions(ctx context.Context) (BeeVersions, error) {
+	h, err := s.GetHealth(ctx)
+	if err != nil {
+		return BeeVersions{}, err
+	}
+	return BeeVersions{
+		SupportedBeeVersion:    SupportedBeeVersionExact,
+		SupportedBeeApiVersion: SupportedApiVersion,
+		BeeVersion:             h.Version,
+		BeeApiVersion:          h.APIVersion,
+	}, nil
+}
+
+// IsSupportedExactVersion reports whether the connected node's version
+// matches SupportedBeeVersionExact byte-for-byte (most strict — mostly
+// useful for CI). Mirrors bee-js Bee.isSupportedExactVersion.
+func (s *Service) IsSupportedExactVersion(ctx context.Context) (bool, error) {
+	h, err := s.GetHealth(ctx)
+	if err != nil {
+		return false, err
+	}
+	return h.Version == SupportedBeeVersionExact, nil
+}
+
+// IsSupportedApiVersion reports whether the connected node's apiVersion
+// shares a major-semver number with SupportedApiVersion. This is the
+// looser check most callers want. Mirrors bee-js Bee.isSupportedApiVersion.
+func (s *Service) IsSupportedApiVersion(ctx context.Context) (bool, error) {
+	h, err := s.GetHealth(ctx)
+	if err != nil {
+		return false, err
+	}
+	a, err1 := majorSemver(h.APIVersion)
+	b, err2 := majorSemver(SupportedApiVersion)
+	if err1 != nil || err2 != nil {
+		return false, errors.Join(err1, err2)
+	}
+	return a == b, nil
+}
+
+func majorSemver(v string) (string, error) {
+	v = strings.TrimPrefix(v, "v")
+	if i := strings.Index(v, "."); i > 0 {
+		return v[:i], nil
+	}
+	return "", swarm.NewBeeArgumentError("invalid semver", v)
+}
+
+// IsGateway reports whether the node is running in gateway mode. The
+// /gateway endpoint returns 404 outside gateway mode, in which case
+// false is returned without an error. Mirrors bee-js Bee.isGateway.
+func (s *Service) IsGateway(ctx context.Context) (bool, error) {
+	u := s.baseURL.ResolveReference(&url.URL{Path: "gateway"})
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return false, err
+	}
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return false, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		return false, nil
+	}
+	if err := swarm.CheckResponse(resp); err != nil {
+		return false, nil
+	}
+	var res struct {
+		Gateway bool `json:"gateway"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return false, err
+	}
+	return res.Gateway, nil
 }
 
 // Readiness checks if the Bee node is ready to serve requests.
