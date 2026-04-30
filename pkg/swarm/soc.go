@@ -61,3 +61,61 @@ func Sign(data []byte, privateKey *ecdsa.PrivateKey) ([]byte, error) {
 	hash := crypto.Keccak256(data)
 	return crypto.Sign(hash, privateKey)
 }
+
+// UnmarshalSingleOwnerChunk parses the wire form of a SOC chunk —
+// identifier(32) || signature(65) || span(8) || payload(≤4096) — and
+// verifies it matches expectedAddress (recovered owner ⊕ identifier
+// must hash to expectedAddress). Mirrors bee-js unmarshalSingleOwnerChunk.
+func UnmarshalSingleOwnerChunk(data []byte, expectedAddress Reference) (*SingleOwnerChunk, error) {
+	const minLen = IdentifierLength + SignatureLength + SpanSize
+	if len(data) < minLen {
+		return nil, NewBeeArgumentError("SOC data too short", len(data))
+	}
+
+	id := data[:IdentifierLength]
+	sig := data[IdentifierLength : IdentifierLength+SignatureLength]
+	spanStart := IdentifierLength + SignatureLength
+	payloadStart := spanStart + SpanSize
+	span := data[spanStart:payloadStart]
+	payload := data[payloadStart:]
+
+	cacData := make([]byte, 0, len(span)+len(payload))
+	cacData = append(cacData, span...)
+	cacData = append(cacData, payload...)
+	cacAddr, err := CalculateChunkAddress(cacData)
+	if err != nil {
+		return nil, err
+	}
+
+	digest := crypto.Keccak256(append(append([]byte{}, id...), cacAddr...))
+	pubKey, err := crypto.SigToPub(digest, sig)
+	if err != nil {
+		return nil, fmt.Errorf("recover SOC owner: %w", err)
+	}
+	owner := crypto.PubkeyToAddress(*pubKey).Bytes()
+
+	socAddr := crypto.Keccak256(append(append([]byte{}, id...), owner...))
+	if !bytesEq(socAddr, expectedAddress.Raw()) {
+		return nil, fmt.Errorf("SOC data does not match given address")
+	}
+
+	return &SingleOwnerChunk{
+		ID:        id,
+		Signature: sig,
+		Owner:     owner,
+		Span:      span,
+		Payload:   payload,
+	}, nil
+}
+
+func bytesEq(a, b []byte) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}

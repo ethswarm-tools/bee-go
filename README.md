@@ -86,9 +86,14 @@ live on `Client` itself in `storage.go`.
 | `bee.uploadFilesFromDirectory(stamp, dir, opts)` | `client.File.UploadCollection(ctx, batchID, dir, opts)` |
 | `bee.uploadChunk(stamp, data, opts)` | `client.File.UploadChunk(ctx, batchID, data, opts)` |
 | `bee.downloadData(ref, opts)` | `client.File.DownloadData(ctx, ref, opts)` |
+| `bee.probeData(ref)` | `client.File.ProbeData(ctx, ref)` (HEAD /bytes — Content-Length only) |
 | `bee.downloadFile(ref, path, opts)` | `client.File.DownloadFile(ctx, ref, opts)` |
 | `bee.downloadChunk(ref, opts)` | `client.File.DownloadChunk(ctx, ref, opts)` |
 | `bee.uploadSOC(stamp, owner, id, sig, data, opts)` | `client.File.UploadSOC(ctx, batchID, owner, id, sig, data, opts)` |
+| `bee.makeContentAddressedChunk(payload)` | `swarm.MakeContentAddressedChunk(payload)` (offline CAC) |
+| `bee.makeSingleOwnerChunk(addr, span, payload, id, signer)` | `swarm.MakeSingleOwnerChunk(id, payload, signer)` (offline SOC) |
+| `bee.calculateSingleOwnerChunkAddress(id, owner)` | `swarm.CalculateSingleOwnerChunkAddress(id, owner)` |
+| `bee.makeSOCReader(owner)` / `makeSOCWriter(signer)` | `client.File.MakeSOCReader(owner)` / `client.File.MakeSOCWriter(signer)` |
 | `bee.createFeedManifest(stamp, topic, owner)` | `client.File.CreateFeedManifest(ctx, batchID, owner, topic)` |
 | `bee.makeFeedReader(topic, owner)` | `client.File.MakeFeedReader(owner, topic)` |
 | `bee.makeFeedWriter(topic, signer)` | `client.File.MakeFeedWriter(signer, topic)` |
