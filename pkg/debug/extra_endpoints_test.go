@@ -2,9 +2,13 @@ package debug_test
 
 import (
 	"context"
+	"encoding/base64"
+	"io"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/ethersphere/bee-go/pkg/debug"
@@ -141,5 +145,170 @@ func TestService_ConnectPeer(t *testing.T) {
 	// No double slashes after /connect/.
 	if gotPath == "" || gotPath[:9] != "/connect/" {
 		t.Errorf("path = %q", gotPath)
+	}
+}
+
+func TestService_WelcomeMessage(t *testing.T) {
+	var posted string
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/welcome-message" && r.Method == http.MethodGet:
+			w.Write([]byte(`{"welcomeMessage":"hello swarm"}`))
+		case r.URL.Path == "/welcome-message" && r.Method == http.MethodPost:
+			b, _ := io.ReadAll(r.Body)
+			posted = string(b)
+			w.Write([]byte(`{"status":"ok"}`))
+		default:
+			w.WriteHeader(404)
+		}
+	}))
+	defer s.Close()
+
+	u, _ := url.Parse(s.URL)
+	c := debug.NewService(u, http.DefaultClient)
+
+	got, err := c.GetWelcomeMessage(context.Background())
+	if err != nil {
+		t.Fatalf("GetWelcomeMessage: %v", err)
+	}
+	if got != "hello swarm" {
+		t.Errorf("got = %q", got)
+	}
+
+	if err := c.SetWelcomeMessage(context.Background(), "new msg"); err != nil {
+		t.Fatalf("SetWelcomeMessage: %v", err)
+	}
+	if !strings.Contains(posted, `"welcomeMessage":"new msg"`) {
+		t.Errorf("posted body = %s", posted)
+	}
+}
+
+func TestService_Loggers(t *testing.T) {
+	exp := "one/name"
+	encoded := base64.StdEncoding.EncodeToString([]byte(exp))
+	var putHit string
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body := `{"tree":{},"loggers":[{"logger":"a","verbosity":"info","subsystem":"x","id":"1"}]}`
+		switch {
+		case r.URL.Path == "/loggers" && r.Method == http.MethodGet:
+			w.Write([]byte(body))
+		case r.URL.Path == "/loggers/"+encoded && r.Method == http.MethodGet:
+			w.Write([]byte(body))
+		case r.URL.Path == "/loggers/"+encoded && r.Method == http.MethodPut:
+			putHit = r.URL.Path
+			w.WriteHeader(200)
+		default:
+			w.WriteHeader(404)
+		}
+	}))
+	defer s.Close()
+
+	u, _ := url.Parse(s.URL)
+	c := debug.NewService(u, http.DefaultClient)
+
+	got, err := c.GetLoggers(context.Background())
+	if err != nil {
+		t.Fatalf("GetLoggers: %v", err)
+	}
+	if len(got.Loggers) != 1 || got.Loggers[0].Logger != "a" {
+		t.Errorf("loggers = %+v", got.Loggers)
+	}
+
+	got2, err := c.GetLoggersByExpression(context.Background(), exp)
+	if err != nil {
+		t.Fatalf("GetLoggersByExpression: %v", err)
+	}
+	if len(got2.Loggers) != 1 {
+		t.Errorf("filtered loggers = %+v", got2.Loggers)
+	}
+
+	if err := c.SetLoggerVerbosity(context.Background(), exp); err != nil {
+		t.Fatalf("SetLoggerVerbosity: %v", err)
+	}
+	if putHit != "/loggers/"+encoded {
+		t.Errorf("PUT path = %q want %q", putHit, "/loggers/"+encoded)
+	}
+}
+
+func TestService_GetLastChequesForPeer(t *testing.T) {
+	body := `{
+		"peer": "abc",
+		"lastreceived": {"beneficiary":"0xb1","chequebook":"0xc1","payout":"100"},
+		"lastsent": {"beneficiary":"0xb2","chequebook":"0xc2","payout":"50"}
+	}`
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/chequebook/cheque/abc" && r.Method == http.MethodGet {
+			w.Write([]byte(body))
+			return
+		}
+		w.WriteHeader(404)
+	}))
+	defer s.Close()
+
+	u, _ := url.Parse(s.URL)
+	c := debug.NewService(u, http.DefaultClient)
+	got, err := c.GetLastChequesForPeer(context.Background(), "abc")
+	if err != nil {
+		t.Fatalf("GetLastChequesForPeer: %v", err)
+	}
+	if got.Peer != "abc" {
+		t.Errorf("peer = %q", got.Peer)
+	}
+	if got.LastReceived == nil || got.LastReceived.Payout.Int64() != 100 {
+		t.Errorf("lastReceived = %+v", got.LastReceived)
+	}
+	if got.LastSent == nil || got.LastSent.Beneficiary != "0xb2" {
+		t.Errorf("lastSent = %+v", got.LastSent)
+	}
+}
+
+func TestService_CashoutOps(t *testing.T) {
+	getBody := `{
+		"peer": "abc",
+		"uncashedAmount": "777",
+		"transactionHash": "0xtx",
+		"lastCashedCheque": {"beneficiary":"0xb","chequebook":"0xc","payout":"500"},
+		"result": {"recipient":"0xr","lastPayout":"500","bounced":false}
+	}`
+	gotGasPrice := ""
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/chequebook/cashout/abc" && r.Method == http.MethodGet:
+			w.Write([]byte(getBody))
+		case r.URL.Path == "/chequebook/cashout/abc" && r.Method == http.MethodPost:
+			gotGasPrice = r.Header.Get("gas-price")
+			w.Write([]byte(`{"transactionHash":"0xcashout"}`))
+		default:
+			w.WriteHeader(404)
+		}
+	}))
+	defer s.Close()
+
+	u, _ := url.Parse(s.URL)
+	c := debug.NewService(u, http.DefaultClient)
+
+	la, err := c.GetLastCashoutAction(context.Background(), "abc")
+	if err != nil {
+		t.Fatalf("GetLastCashoutAction: %v", err)
+	}
+	if la.UncashedAmount == nil || la.UncashedAmount.Int64() != 777 {
+		t.Errorf("uncashedAmount = %v", la.UncashedAmount)
+	}
+	if la.Result == nil || la.Result.LastPayout == nil || la.Result.LastPayout.Int64() != 500 {
+		t.Errorf("result.lastPayout = %+v", la.Result)
+	}
+	if la.LastCashedCheque == nil || la.LastCashedCheque.Payout.Int64() != 500 {
+		t.Errorf("lastCashedCheque = %+v", la.LastCashedCheque)
+	}
+
+	hash, err := c.CashoutLastCheque(context.Background(), "abc", big.NewInt(1234))
+	if err != nil {
+		t.Fatalf("CashoutLastCheque: %v", err)
+	}
+	if hash != "0xcashout" {
+		t.Errorf("hash = %q", hash)
+	}
+	if gotGasPrice != "1234" {
+		t.Errorf("gas-price header = %q", gotGasPrice)
 	}
 }

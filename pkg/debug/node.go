@@ -1,6 +1,7 @@
 package debug
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -161,6 +162,54 @@ func (s *Service) StatusNeighborhoods(ctx context.Context) ([]Neighborhood, erro
 		return nil, err
 	}
 	return res.Neighborhoods, nil
+}
+
+// GetWelcomeMessage returns the P2P welcome message the node greets new
+// peers with. Mirrors bee-js Bee.getWelcomeMessage.
+func (s *Service) GetWelcomeMessage(ctx context.Context) (string, error) {
+	u := s.baseURL.ResolveReference(&url.URL{Path: "welcome-message"})
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if err := swarm.CheckResponse(resp); err != nil {
+		return "", err
+	}
+	var res struct {
+		WelcomeMessage string `json:"welcomeMessage"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return "", err
+	}
+	return res.WelcomeMessage, nil
+}
+
+// SetWelcomeMessage updates the P2P welcome message. Mirrors bee-js
+// Bee.setWelcomeMessage.
+func (s *Service) SetWelcomeMessage(ctx context.Context, message string) error {
+	u := s.baseURL.ResolveReference(&url.URL{Path: "welcome-message"})
+	body, err := json.Marshal(struct {
+		WelcomeMessage string `json:"welcomeMessage"`
+	}{WelcomeMessage: message})
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u.String(), bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	return swarm.CheckResponse(resp)
 }
 
 // NodeInfo represents the Bee node configuration.

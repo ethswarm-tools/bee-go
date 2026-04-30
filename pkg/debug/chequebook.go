@@ -168,6 +168,16 @@ func (s *Service) WithdrawDAI(ctx context.Context, amount *big.Int, address stri
 	return res.TransactionHash, nil
 }
 
+// WithdrawBZZToExternalWallet is the bee-js name for WithdrawBZZ.
+func (s *Service) WithdrawBZZToExternalWallet(ctx context.Context, amount *big.Int, address string) (string, error) {
+	return s.WithdrawBZZ(ctx, amount, address)
+}
+
+// WithdrawDAIToExternalWallet is the bee-js name for WithdrawDAI.
+func (s *Service) WithdrawDAIToExternalWallet(ctx context.Context, amount *big.Int, address string) (string, error) {
+	return s.WithdrawDAI(ctx, amount, address)
+}
+
 // GetChequebookBalance retrieves the chequebook balance.
 func (s *Service) GetChequebookBalance(ctx context.Context) (ChequebookBalanceResponse, error) {
 	u := s.baseURL.ResolveReference(&url.URL{Path: "chequebook/balance"})
@@ -253,6 +263,16 @@ func (s *Service) WithdrawTokens(ctx context.Context, amount *big.Int) (string, 
 		return "", err
 	}
 	return res.TransactionHash, nil
+}
+
+// DepositBZZToChequebook is the bee-js name for DepositTokens.
+func (s *Service) DepositBZZToChequebook(ctx context.Context, amount *big.Int) (string, error) {
+	return s.DepositTokens(ctx, amount)
+}
+
+// WithdrawBZZFromChequebook is the bee-js name for WithdrawTokens.
+func (s *Service) WithdrawBZZFromChequebook(ctx context.Context, amount *big.Int) (string, error) {
+	return s.WithdrawTokens(ctx, amount)
 }
 
 // Settlement represents a settlement with a peer.
@@ -364,13 +384,6 @@ func (s *Service) Settlements(ctx context.Context) (SettlementsResponse, error) 
 	return res, nil
 }
 
-// Cheque represents a cheque.
-type Cheque struct {
-	Peer       string   `json:"peer"`
-	Chequebook string   `json:"chequebook"`
-	Amount     *big.Int `json:"amount"`
-}
-
 type LastCheque struct {
 	Peer         string `json:"peer"`
 	LastReceived *struct {
@@ -453,4 +466,173 @@ func (s *Service) PendingTransactions(ctx context.Context) ([]string, error) {
 		out = append(out, t.TransactionHash)
 	}
 	return out, nil
+}
+
+// Cheque is one peer's last sent or received cheque.
+type Cheque struct {
+	Beneficiary string   `json:"beneficiary"`
+	Chequebook  string   `json:"chequebook"`
+	Payout      *big.Int `json:"-"`
+}
+
+type chequeJSON struct {
+	Beneficiary string `json:"beneficiary"`
+	Chequebook  string `json:"chequebook"`
+	Payout      string `json:"payout"`
+}
+
+// UnmarshalJSON handles the bigint-as-string Payout field.
+func (c *Cheque) UnmarshalJSON(b []byte) error {
+	var v chequeJSON
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	c.Beneficiary = v.Beneficiary
+	c.Chequebook = v.Chequebook
+	c.Payout = parseAccountingBigInt(v.Payout)
+	return nil
+}
+
+// PeerCheques is the response from GET /chequebook/cheque/{peer}: the
+// last sent and received cheques for that peer (either may be nil).
+type PeerCheques struct {
+	Peer         string  `json:"peer"`
+	LastReceived *Cheque `json:"lastreceived"`
+	LastSent     *Cheque `json:"lastsent"`
+}
+
+// GetLastChequesForPeer returns the last sent + received cheques for a
+// specific peer overlay. Mirrors bee-js Bee.getLastChequesForPeer.
+func (s *Service) GetLastChequesForPeer(ctx context.Context, peer string) (PeerCheques, error) {
+	u := s.baseURL.ResolveReference(&url.URL{Path: "chequebook/cheque/" + peer})
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return PeerCheques{}, err
+	}
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return PeerCheques{}, err
+	}
+	defer resp.Body.Close()
+	if err := swarm.CheckResponse(resp); err != nil {
+		return PeerCheques{}, err
+	}
+	var res PeerCheques
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return PeerCheques{}, err
+	}
+	return res, nil
+}
+
+// CashoutResult describes the on-chain outcome of a previous cashout.
+type CashoutResult struct {
+	Recipient  string   `json:"recipient"`
+	LastPayout *big.Int `json:"-"`
+	Bounced    bool     `json:"bounced"`
+}
+
+type cashoutResultJSON struct {
+	Recipient  string `json:"recipient"`
+	LastPayout string `json:"lastPayout"`
+	Bounced    bool   `json:"bounced"`
+}
+
+// UnmarshalJSON handles the bigint-as-string LastPayout field.
+func (c *CashoutResult) UnmarshalJSON(b []byte) error {
+	var v cashoutResultJSON
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	c.Recipient = v.Recipient
+	c.Bounced = v.Bounced
+	c.LastPayout = parseAccountingBigInt(v.LastPayout)
+	return nil
+}
+
+// LastCashoutAction is the response from GET /chequebook/cashout/{peer}.
+// LastCashedCheque, TransactionHash and Result are nil when no cashout
+// has happened yet for that peer.
+type LastCashoutAction struct {
+	Peer            string         `json:"peer"`
+	UncashedAmount  *big.Int       `json:"-"`
+	TransactionHash *string        `json:"transactionHash"`
+	LastCashedCheque *Cheque       `json:"lastCashedCheque"`
+	Result          *CashoutResult `json:"result"`
+}
+
+type lastCashoutActionJSON struct {
+	Peer             string         `json:"peer"`
+	UncashedAmount   string         `json:"uncashedAmount"`
+	TransactionHash  *string        `json:"transactionHash"`
+	LastCashedCheque *Cheque        `json:"lastCashedCheque"`
+	Result           *CashoutResult `json:"result"`
+}
+
+// UnmarshalJSON handles the bigint-as-string UncashedAmount field.
+func (l *LastCashoutAction) UnmarshalJSON(b []byte) error {
+	var v lastCashoutActionJSON
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	l.Peer = v.Peer
+	l.TransactionHash = v.TransactionHash
+	l.LastCashedCheque = v.LastCashedCheque
+	l.Result = v.Result
+	l.UncashedAmount = parseAccountingBigInt(v.UncashedAmount)
+	return nil
+}
+
+// GetLastCashoutAction returns the last cashout state (transaction hash,
+// cashed cheque, on-chain result) for a peer. Mirrors bee-js
+// Bee.getLastCashoutAction.
+func (s *Service) GetLastCashoutAction(ctx context.Context, peer string) (LastCashoutAction, error) {
+	u := s.baseURL.ResolveReference(&url.URL{Path: "chequebook/cashout/" + peer})
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return LastCashoutAction{}, err
+	}
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return LastCashoutAction{}, err
+	}
+	defer resp.Body.Close()
+	if err := swarm.CheckResponse(resp); err != nil {
+		return LastCashoutAction{}, err
+	}
+	var res LastCashoutAction
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return LastCashoutAction{}, err
+	}
+	return res, nil
+}
+
+// CashoutLastCheque cashes out the last received cheque for the peer.
+// gasPrice is optional (nil = let Bee pick); when non-nil it's sent in
+// the gas-price header. Returns the cashout transaction hash.
+//
+// Mirrors bee-js Bee.cashoutLastCheque.
+func (s *Service) CashoutLastCheque(ctx context.Context, peer string, gasPrice *big.Int) (string, error) {
+	u := s.baseURL.ResolveReference(&url.URL{Path: "chequebook/cashout/" + peer})
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u.String(), nil)
+	if err != nil {
+		return "", err
+	}
+	if gasPrice != nil {
+		req.Header.Set("gas-price", gasPrice.String())
+	}
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if err := swarm.CheckResponse(resp); err != nil {
+		return "", err
+	}
+	var res struct {
+		TransactionHash string `json:"transactionHash"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return "", err
+	}
+	return res.TransactionHash, nil
 }

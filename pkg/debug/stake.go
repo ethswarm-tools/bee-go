@@ -70,6 +70,11 @@ func (s *Service) Stake(ctx context.Context, amount *big.Int) (string, error) {
 	return res.TxHash, nil
 }
 
+// DepositStake is the bee-js name for Stake.
+func (s *Service) DepositStake(ctx context.Context, amount *big.Int) (string, error) {
+	return s.Stake(ctx, amount)
+}
+
 // GetWithdrawableStake retrieves the amount of withdrawable staked BZZ.
 func (s *Service) GetWithdrawableStake(ctx context.Context) (*big.Int, error) {
 	u := s.baseURL.ResolveReference(&url.URL{Path: "stake/withdrawable"})

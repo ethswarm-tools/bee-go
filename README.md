@@ -111,6 +111,9 @@ live on `Client` itself in `storage.go`.
 | `bee.pin(ref)` / `unpin(ref)` | `client.API.Pin(ctx, ref)` / `Unpin(ctx, ref)` |
 | `bee.getPin(ref)` / `getAllPins()` | `client.API.GetPin(ctx, ref)` / `ListPins(ctx)` |
 | `bee.createTag()` / `getTag(uid)` | `client.API.CreateTag(ctx)` / `GetTag(ctx, uid)` |
+| `bee.getAllTags(opts)` / `deleteTag(uid)` / `updateTag(uid, tag)` | `client.API.ListTags(ctx, offset, limit)` / `DeleteTag(ctx, uid)` / `UpdateTag(ctx, uid, tag)` |
+| `bee.createEnvelope(stamp, ref)` | `client.API.PostEnvelope(ctx, batchID, ref)` |
+| `bee.getGrantees(ref)` / `createGrantees(stamp, list)` / `patchGrantees(stamp, ref, hist, add, rev)` | `client.API.GetGrantees(ctx, ref)` / `CreateGrantees(ctx, batchID, list)` / `PatchGrantees(ctx, batchID, ref, hist, add, rev)` |
 | `bee.reuploadPinnedData(stamp, ref)` | `client.API.Reupload(ctx, ref, batchID)` |
 | `bee.pssSend(stamp, topic, target, data, recipient)` | `client.PSS.PssSend(ctx, topic, target, data, recipient)` |
 | `bee.pssSubscribe(topic, handler)` | `client.PSS.PssSubscribe(ctx, topic)` (returns `Subscription{Messages, Errors}`) |
@@ -118,6 +121,8 @@ live on `Client` itself in `storage.go`.
 | `bee.gsocMine(overlay, id, prox)` | `swarm.GSOCMine(target, identifier, proximity)` |
 | `bee.gsocSend(stamp, signer, id, data)` | `client.GSOC.Send(ctx, batchID, signer, id, data, opts)` |
 | `bee.gsocSubscribe(addr, id, handler)` | `client.GSOC.Subscribe(ctx, owner, id)` |
+| `bee.isConnected()` / `bee.getHealth()` | `client.Debug.Health(ctx)` |
+| `bee.getReadiness()` | `client.Debug.Readiness(ctx)` |
 | `bee.getNodeInfo()` | `client.Debug.NodeInfo(ctx)` |
 | `bee.getStatus()` | `client.Debug.Status(ctx)` |
 | `bee.getNodeAddresses()` | `client.Debug.Addresses(ctx)` |
@@ -126,21 +131,23 @@ live on `Client` itself in `storage.go`.
 | `bee.getChainState()` | `client.Debug.ChainState(ctx)` |
 | `bee.getReserveState()` | `client.Debug.ReserveState(ctx)` |
 | `bee.getRedistributionState()` | `client.Debug.RedistributionState(ctx)` |
-| `bee.getStake()` / `stake(amount)` | `client.Debug.GetStake(ctx)` / `Stake(ctx, amount)` |
+| `bee.getStake()` / `stake(amount)` / `depositStake(amount)` | `client.Debug.GetStake(ctx)` / `Stake(ctx, amount)` / `DepositStake(ctx, amount)` |
 | `bee.getWithdrawableStake()` / `withdrawSurplusStake()` | `client.Debug.GetWithdrawableStake(ctx)` / `WithdrawSurplusStake(ctx)` |
 | `bee.migrateStake()` | `client.Debug.MigrateStake(ctx)` |
-| `bee.getBalances()` / `getBalance(peer)` | `client.Debug.GetBalances(ctx)` / `GetPeerBalance(ctx, peer)` |
-| `bee.getPastDueConsumptionBalances()` | `client.Debug.GetPastDueConsumptionBalances(ctx)` |
-| `bee.getPastDueConsumptionPeerBalance(peer)` | `client.Debug.GetPastDueConsumptionPeerBalance(ctx, peer)` |
-| `bee.getSettlements(peer)` | `client.Debug.PeerSettlement(ctx, peer)` |
-| `bee.getAllSettlements()` | `client.Debug.Settlements(ctx)` |
-| `bee.getChequebookAddress()` / `getChequebookBalance()` | (chequebook fields on `client.Debug.GetWallet`) / `client.Debug.GetChequebookBalance(ctx)` |
-| `bee.depositTokens(amount)` / `withdrawTokens(amount)` | `client.Debug.DepositTokens(ctx, amount)` / `WithdrawTokens(ctx, amount)` |
-| `bee.getLastCheques()` | `client.Debug.LastCheques(ctx)` |
-| `bee.getAllPendingTransactions()` | `client.Debug.GetAllPendingTransactions(ctx)` |
-| `bee.getPendingTransaction(hash)` | `client.Debug.GetPendingTransaction(ctx, hash)` |
-| `bee.rebroadcastPendingTransaction(hash)` | `client.Debug.RebroadcastPendingTransaction(ctx, hash)` |
-| `bee.cancelPendingTransaction(hash, gasPrice)` | `client.Debug.CancelPendingTransaction(ctx, hash, gasPrice)` |
+| `bee.getAllBalances()` / `getPeerBalance(peer)` | `client.Debug.GetBalances(ctx)` / `GetPeerBalance(ctx, peer)` |
+| `bee.getPastDueConsumptionBalances()` / `getPastDueConsumptionPeerBalance(peer)` | `client.Debug.GetPastDueConsumptionBalances(ctx)` / `GetPastDueConsumptionPeerBalance(ctx, peer)` |
+| `bee.getSettlements(peer)` / `getAllSettlements()` | `client.Debug.PeerSettlement(ctx, peer)` / `Settlements(ctx)` |
+| `bee.getWalletBalance()` | `client.Debug.GetWallet(ctx)` (returns BZZ + native balances + chequebook + chainID) |
+| `bee.withdrawBZZToExternalWallet(amount, addr)` / `withdrawDAIToExternalWallet(amount, addr)` | `client.Debug.WithdrawBZZ(ctx, amount, addr)` / `WithdrawDAI(ctx, amount, addr)` (also `WithdrawBZZToExternalWallet` / `WithdrawDAIToExternalWallet` aliases) |
+| `bee.getChequebookAddress()` / `getChequebookBalance()` | (`Chequebook` field on `client.Debug.GetWallet`) / `client.Debug.GetChequebookBalance(ctx)` |
+| `bee.depositBZZToChequebook(amount)` / `withdrawBZZFromChequebook(amount)` | `client.Debug.DepositTokens(ctx, amount)` / `WithdrawTokens(ctx, amount)` (also `DepositBZZToChequebook` / `WithdrawBZZFromChequebook` aliases) |
+| `bee.getLastCheques()` / `getLastChequesForPeer(peer)` | `client.Debug.LastCheques(ctx)` / `GetLastChequesForPeer(ctx, peer)` |
+| `bee.getLastCashoutAction(peer)` / `cashoutLastCheque(peer, gasPrice)` | `client.Debug.GetLastCashoutAction(ctx, peer)` / `CashoutLastCheque(ctx, peer, gasPrice)` |
+| `bee.getAllPendingTransactions()` / `getPendingTransaction(hash)` | `client.Debug.GetAllPendingTransactions(ctx)` / `GetPendingTransaction(ctx, hash)` |
+| `bee.rebroadcastPendingTransaction(hash)` / `cancelPendingTransaction(hash, gasPrice)` | `client.Debug.RebroadcastPendingTransaction(ctx, hash)` / `CancelPendingTransaction(ctx, hash, gasPrice)` |
+| `bee.rchash(depth, anchor1, anchor2)` | `client.Debug.RCHash(ctx, depth, anchor1, anchor2)` |
+| `bee.getWelcomeMessage()` / `setWelcomeMessage(msg)` | `client.Debug.GetWelcomeMessage(ctx)` / `SetWelcomeMessage(ctx, msg)` |
+| `bee.getLoggers()` / `getLoggersByExpression(exp)` / `setLoggerVerbosity(exp)` | `client.Debug.GetLoggers(ctx)` / `GetLoggersByExpression(ctx, exp)` / `SetLoggerVerbosity(ctx, exp)` |
 
 Construct a dev-mode client with `bee.NewDevClient(url)` — it returns
 the same surface, but most chain/payment endpoints will return a
