@@ -94,6 +94,95 @@ func (s *Service) GetPastDueConsumptionBalances(ctx context.Context) ([]Balance,
 	return s.GetConsumed(ctx)
 }
 
+// PeerAccounting describes the full accounting state with one peer:
+// settlement balances, the configured + dynamic credit/debit thresholds,
+// and the various reserved/surplus/ghost positions Bee tracks. All
+// monetary fields are PLUR (BZZ base units).
+//
+// Bee node endpoint: GET /accounting. Not exposed by bee-js; useful for
+// monitoring swap state at finer granularity than /balances.
+type PeerAccounting struct {
+	Balance                  *big.Int
+	ConsumedBalance          *big.Int
+	ThresholdReceived        *big.Int
+	ThresholdGiven           *big.Int
+	CurrentThresholdReceived *big.Int
+	CurrentThresholdGiven    *big.Int
+	SurplusBalance           *big.Int
+	ReservedBalance          *big.Int
+	ShadowReservedBalance    *big.Int
+	GhostBalance             *big.Int
+}
+
+type peerAccountingJSON struct {
+	Balance                  string `json:"balance"`
+	ConsumedBalance          string `json:"consumedBalance"`
+	ThresholdReceived        string `json:"thresholdReceived"`
+	ThresholdGiven           string `json:"thresholdGiven"`
+	CurrentThresholdReceived string `json:"currentThresholdReceived"`
+	CurrentThresholdGiven    string `json:"currentThresholdGiven"`
+	SurplusBalance           string `json:"surplusBalance"`
+	ReservedBalance          string `json:"reservedBalance"`
+	ShadowReservedBalance    string `json:"shadowReservedBalance"`
+	GhostBalance             string `json:"ghostBalance"`
+}
+
+// UnmarshalJSON handles the bigint-as-string fields Bee emits.
+func (p *PeerAccounting) UnmarshalJSON(b []byte) error {
+	var v peerAccountingJSON
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	p.Balance = parseAccountingBigInt(v.Balance)
+	p.ConsumedBalance = parseAccountingBigInt(v.ConsumedBalance)
+	p.ThresholdReceived = parseAccountingBigInt(v.ThresholdReceived)
+	p.ThresholdGiven = parseAccountingBigInt(v.ThresholdGiven)
+	p.CurrentThresholdReceived = parseAccountingBigInt(v.CurrentThresholdReceived)
+	p.CurrentThresholdGiven = parseAccountingBigInt(v.CurrentThresholdGiven)
+	p.SurplusBalance = parseAccountingBigInt(v.SurplusBalance)
+	p.ReservedBalance = parseAccountingBigInt(v.ReservedBalance)
+	p.ShadowReservedBalance = parseAccountingBigInt(v.ShadowReservedBalance)
+	p.GhostBalance = parseAccountingBigInt(v.GhostBalance)
+	return nil
+}
+
+func parseAccountingBigInt(s string) *big.Int {
+	if s == "" {
+		return nil
+	}
+	v := new(big.Int)
+	if _, ok := v.SetString(s, 10); !ok {
+		return nil
+	}
+	return v
+}
+
+// GetAccounting returns per-peer accounting info keyed by peer overlay
+// address. Strictly richer than GetBalances. Bee-only endpoint (not in
+// bee-js).
+func (s *Service) GetAccounting(ctx context.Context) (map[string]PeerAccounting, error) {
+	u := s.baseURL.ResolveReference(&url.URL{Path: "accounting"})
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if err := swarm.CheckResponse(resp); err != nil {
+		return nil, err
+	}
+	var res struct {
+		PeerData map[string]PeerAccounting `json:"peerData"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return nil, err
+	}
+	return res.PeerData, nil
+}
+
 // GetPastDueConsumptionPeerBalance is the bee-js alias for GetPeerConsumed.
 func (s *Service) GetPastDueConsumptionPeerBalance(ctx context.Context, address string) (*Balance, error) {
 	return s.GetPeerConsumed(ctx, address)

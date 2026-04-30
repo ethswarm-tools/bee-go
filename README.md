@@ -146,6 +146,23 @@ Construct a dev-mode client with `bee.NewDevClient(url)` — it returns
 the same surface, but most chain/payment endpoints will return a
 `*BeeResponseError` 404 against a `bee dev` node.
 
+### Bee-only extras (not in bee-js)
+
+These hit Bee node endpoints that bee-js does not expose; useful for
+operators / diagnostic tooling.
+
+| Endpoint | bee-go call |
+|---|---|
+| `GET /accounting` | `client.Debug.GetAccounting(ctx)` — full per-peer accounting (balances, thresholds, surpluses, ghost balance) |
+| `GET /status/peers` | `client.Debug.StatusPeers(ctx)` — parallel status snapshot of every connected peer |
+| `GET /status/neighborhoods` | `client.Debug.StatusNeighborhoods(ctx)` — reserve size + proximity per neighborhood |
+| `POST /connect/{multi-address}` | `client.Debug.ConnectPeer(ctx, multiaddr)` — manual peer dial |
+
+`pkg/postage` also exposes `MarshalStamp(batchID, index, timestamp, signature)`
+and `ConvertEnvelopeToMarshaledStamp(envelope)` for callers that need
+the on-wire stamp byte layout (e.g. when stamping outside the standard
+upload path).
+
 ## Errors
 
 Every endpoint returns either nil or a `*swarm.BeeError`,

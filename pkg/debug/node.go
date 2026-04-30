@@ -90,6 +90,79 @@ func (s *Service) Status(ctx context.Context) (StatusResponse, error) {
 	return res, nil
 }
 
+// PeerStatus is one entry in the StatusPeers response. It mirrors
+// StatusResponse but adds RequestFailed (set when Bee couldn't reach
+// the peer in time and the rest of the snapshot is zero-valued).
+type PeerStatus struct {
+	StatusResponse
+	RequestFailed bool `json:"requestFailed,omitempty"`
+}
+
+// StatusPeers returns the status snapshot of every currently connected
+// peer (bee mode, reserve size, sync state, …). Snapshots are gathered
+// in parallel by the Bee node with a 10-second per-peer timeout; peers
+// that don't respond have RequestFailed=true.
+//
+// Bee node endpoint: GET /status/peers. Not exposed by bee-js.
+func (s *Service) StatusPeers(ctx context.Context) ([]PeerStatus, error) {
+	u := s.baseURL.ResolveReference(&url.URL{Path: "status/peers"})
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if err := swarm.CheckResponse(resp); err != nil {
+		return nil, err
+	}
+	var res struct {
+		Snapshots []PeerStatus `json:"snapshots"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return nil, err
+	}
+	return res.Snapshots, nil
+}
+
+// Neighborhood describes one neighborhood the node knows about: its
+// binary prefix string, the reserve size within radius, and the
+// proximity order.
+type Neighborhood struct {
+	Neighborhood            string `json:"neighborhood"`
+	ReserveSizeWithinRadius int    `json:"reserveSizeWithinRadius"`
+	Proximity               uint8  `json:"proximity"`
+}
+
+// StatusNeighborhoods returns reserve statistics per neighborhood.
+// Useful for storage-layer diagnostics.
+//
+// Bee node endpoint: GET /status/neighborhoods. Not exposed by bee-js.
+func (s *Service) StatusNeighborhoods(ctx context.Context) ([]Neighborhood, error) {
+	u := s.baseURL.ResolveReference(&url.URL{Path: "status/neighborhoods"})
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if err := swarm.CheckResponse(resp); err != nil {
+		return nil, err
+	}
+	var res struct {
+		Neighborhoods []Neighborhood `json:"neighborhoods"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return nil, err
+	}
+	return res.Neighborhoods, nil
+}
+
 // NodeInfo represents the Bee node configuration.
 type NodeInfo struct {
 	BeeMode           string `json:"beeMode"`
