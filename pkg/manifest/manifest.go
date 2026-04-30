@@ -523,9 +523,11 @@ func splitForks(a, b *Fork) *Fork {
 // form. If a SelfAddress was already populated (e.g. by a prior save), it is
 // returned unchanged.
 //
-// LIMITATION: only the single-chunk case is implemented (marshaled data must
-// fit in 4096 payload bytes). Large manifests with many forks need a Swarm
-// Merkle tree across multiple chunks; that's tracked under the parity plan.
+// Multi-chunk marshaled nodes are streamed through swarm.FileChunker:
+// the marshaled bytes are treated as a file, hashed at each level of
+// the BMT, and the root chunk's address is returned. For the common
+// case where Marshal fits in one chunk the chunker still produces the
+// same single-leaf BMT address as a direct CalculateChunkAddress call.
 func (n *MantarayNode) CalculateSelfAddress() ([]byte, error) {
 	if len(n.SelfAddress) > 0 {
 		return append([]byte(nil), n.SelfAddress...), nil
@@ -534,16 +536,15 @@ func (n *MantarayNode) CalculateSelfAddress() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(data) > swarm.ChunkSize {
-		return nil, fmt.Errorf("manifest: marshaled size %d exceeds single chunk; multi-chunk BMT not yet implemented", len(data))
+	chunker := swarm.NewFileChunker(nil)
+	if _, err := chunker.Write(data); err != nil {
+		return nil, err
 	}
-	span := make([]byte, swarm.SpanSize)
-	binary.LittleEndian.PutUint64(span, uint64(len(data)))
-	addr, err := swarm.CalculateChunkAddress(append(span, data...))
+	root, err := chunker.Finalize()
 	if err != nil {
 		return nil, err
 	}
-	return addr, nil
+	return root.Address.Raw(), nil
 }
 
 // ============================================================================

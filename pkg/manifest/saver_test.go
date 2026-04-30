@@ -61,6 +61,68 @@ func TestSaveRecursively(t *testing.T) {
 	}
 }
 
+// A mantaray node whose marshaled form exceeds one chunk must be
+// chunked through swarm.FileChunker (multi-level BMT). Pre-fix this
+// returned an error.
+func TestSaveRecursively_MultiChunkNode(t *testing.T) {
+	n := manifest.New()
+	// 256 forks with chunky metadata reliably push the node's marshaled
+	// size past ChunkSize. Each path uses a distinct first byte so they
+	// all live as direct forks of root.
+	bigMeta := strings.Repeat("x", 64)
+	for i := 0; i < 256; i++ {
+		path := []byte{byte(i), 'f', 'i', 'l', 'e'}
+		ref := swarm.MustReference(strings.Repeat("aa", 32))
+		n.AddFork(path, ref, map[string]string{"k": bigMeta})
+	}
+
+	// Sanity: confirm Marshal output exceeds one chunk so the test
+	// actually exercises the multi-chunk path.
+	data, err := n.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	if len(data) <= swarm.ChunkSize {
+		t.Skipf("marshaled size %d does not exceed ChunkSize; trie split too aggressively", len(data))
+	}
+	// CalculateSelfAddress on a fresh tree (clear cached SelfAddress
+	// values from the Marshal above so the chunker actually runs).
+	n.SelfAddress = nil
+	addr, err := n.CalculateSelfAddress()
+	if err != nil {
+		t.Fatalf("CalculateSelfAddress on multi-chunk node: %v", err)
+	}
+	if len(addr) != swarm.ReferenceLength {
+		t.Errorf("address length = %d", len(addr))
+	}
+
+	uploaded := 0
+	uploader := manifest.ChunkUploader(func(ctx context.Context, batchID swarm.BatchID, body []byte) (swarm.Reference, error) {
+		uploaded++
+		a, err := swarm.CalculateChunkAddress(body)
+		if err != nil {
+			return swarm.Reference{}, err
+		}
+		return swarm.NewReference(a)
+	})
+	n.SelfAddress = nil
+	for _, f := range n.Forks {
+		f.Node.SelfAddress = nil
+	}
+	root, err := n.SaveRecursively(context.Background(), uploader, swarm.MustBatchID(strings.Repeat("aa", 32)))
+	if err != nil {
+		t.Fatalf("SaveRecursively on multi-chunk node: %v", err)
+	}
+	if root.Hex() == "" {
+		t.Errorf("empty root")
+	}
+	// The root node alone must produce >1 chunk uploads (leaves +
+	// at least one intermediate). Plus per-fork-child uploads.
+	if uploaded < 2 {
+		t.Errorf("expected multiple chunks uploaded for oversize node, got %d", uploaded)
+	}
+}
+
 // SaveRecursively should be idempotent — calling it on an already-saved
 // trie must not re-upload nodes whose SelfAddress is set.
 func TestSaveRecursively_RespectsExistingSelfAddress(t *testing.T) {

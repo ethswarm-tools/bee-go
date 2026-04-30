@@ -17,7 +17,7 @@ import (
 
 // Client is the Bee API client.
 type Client struct {
-	baseUrl    *url.URL
+	baseURL    *url.URL
 	httpClient *http.Client
 	dialer     *websocket.Dialer
 
@@ -42,17 +42,17 @@ func WithHTTPClient(c *http.Client) ClientOption {
 }
 
 // NewClient creates a new Bee API client.
-func NewClient(rawUrl string, opts ...ClientOption) (*Client, error) {
-	if !strings.HasSuffix(rawUrl, "/") {
-		rawUrl += "/"
+func NewClient(rawURL string, opts ...ClientOption) (*Client, error) {
+	if !strings.HasSuffix(rawURL, "/") {
+		rawURL += "/"
 	}
-	u, err := url.Parse(rawUrl)
+	u, err := url.Parse(rawURL)
 	if err != nil {
 		return nil, err
 	}
 
 	c := &Client{
-		baseUrl:    u,
+		baseURL:    u,
 		httpClient: http.DefaultClient,
 		dialer:     websocket.DefaultDialer,
 	}
@@ -62,13 +62,13 @@ func NewClient(rawUrl string, opts ...ClientOption) (*Client, error) {
 	}
 
 	// Initialize Services
-	c.API = api.NewService(c.baseUrl, c.httpClient)
-	c.Debug = debug.NewService(c.baseUrl, c.httpClient)
-	c.File = file.NewService(c.baseUrl, c.httpClient)
-	c.Postage = postage.NewService(c.baseUrl, c.httpClient)
-	c.Swarm = swarm.NewService(c.baseUrl, c.httpClient)
-	c.PSS = pss.NewService(c.baseUrl, c.httpClient, c.dialer)
-	c.GSOC = gsoc.NewService(c.baseUrl, c.httpClient, c.dialer, c.File)
+	c.API = api.NewService(c.baseURL, c.httpClient)
+	c.Debug = debug.NewService(c.baseURL, c.httpClient)
+	c.File = file.NewService(c.baseURL, c.httpClient)
+	c.Postage = postage.NewService(c.baseURL, c.httpClient)
+	c.Swarm = swarm.NewService(c.baseURL, c.httpClient)
+	c.PSS = pss.NewService(c.baseURL, c.httpClient, c.dialer)
+	c.GSOC = gsoc.NewService(c.baseURL, c.httpClient, c.dialer, c.File)
 
 	return c, nil
 }

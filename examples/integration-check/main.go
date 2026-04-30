@@ -228,7 +228,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		tagUID = tag.Uid
+		tagUID = tag.UID
 		fmt.Printf("    uid=%d\n", tagUID)
 		return nil
 	})

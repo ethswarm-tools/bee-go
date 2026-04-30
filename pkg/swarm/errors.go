@@ -64,7 +64,9 @@ type BeeResponseError struct {
 // expected to defer Close themselves as is conventional with net/http.
 func NewBeeResponseError(method, url string, resp *http.Response) *BeeResponseError {
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-	msg := fmt.Sprintf("%s %s: %d %s", method, url, resp.StatusCode, resp.Status)
+	// resp.Status already begins with the numeric code (e.g. "422 Unprocessable
+	// Entity"), so we don't repeat resp.StatusCode here.
+	msg := fmt.Sprintf("%s %s: %s", method, url, resp.Status)
 	return &BeeResponseError{
 		BeeError:     BeeError{Msg: msg},
 		Method:       method,

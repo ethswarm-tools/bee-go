@@ -151,8 +151,8 @@ func TestReadUploadResult(t *testing.T) {
 	if res.Reference.Hex() != refHex {
 		t.Errorf("Reference = %q, want %q", res.Reference.Hex(), refHex)
 	}
-	if res.TagUid != 12345 {
-		t.Errorf("TagUid = %d, want 12345", res.TagUid)
+	if res.TagUID != 12345 {
+		t.Errorf("TagUID = %d, want 12345", res.TagUID)
 	}
 	if res.HistoryAddress == nil || res.HistoryAddress.Hex() != hist {
 		t.Errorf("HistoryAddress = %v, want %s", res.HistoryAddress, hist)
@@ -165,8 +165,8 @@ func TestReadUploadResult_NoHeaders(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.TagUid != 0 {
-		t.Errorf("TagUid should be 0 when header missing")
+	if res.TagUID != 0 {
+		t.Errorf("TagUID should be 0 when header missing")
 	}
 	if res.HistoryAddress != nil {
 		t.Errorf("HistoryAddress should be nil when header missing")
@@ -186,8 +186,8 @@ func TestParseFileHeaders(t *testing.T) {
 	if got.Name != "hello.png" {
 		t.Errorf("Name = %q", got.Name)
 	}
-	if got.TagUid != 42 {
-		t.Errorf("TagUid = %d", got.TagUid)
+	if got.TagUID != 42 {
+		t.Errorf("TagUID = %d", got.TagUID)
 	}
 }
 

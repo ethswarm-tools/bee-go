@@ -14,7 +14,7 @@ import (
 // Tag represents a Swarm tag.
 // Structure from Bee API docs.
 type Tag struct {
-	Uid       uint32 `json:"uid"`
+	UID       uint32 `json:"uid"`
 	Name      string `json:"name"`
 	Total     int64  `json:"total"`
 	Split     int64  `json:"split"`

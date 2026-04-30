@@ -2,8 +2,6 @@ package manifest
 
 import (
 	"context"
-	"encoding/binary"
-	"fmt"
 
 	"github.com/ethersphere/bee-go/pkg/swarm"
 )
@@ -16,18 +14,13 @@ import (
 type ChunkUploader func(ctx context.Context, batchID swarm.BatchID, chunkData []byte) (swarm.Reference, error)
 
 // SaveRecursively walks the trie depth-first, marshaling each node
-// into a chunk body, calling uploader to publish that chunk, and
-// recording the resulting reference in the node's SelfAddress so the
-// parent's marshal can reference it.
+// into chunks via swarm.FileChunker (a single leaf chunk for nodes
+// that fit; an intermediate-level BMT for any that exceed ChunkSize),
+// uploading every produced chunk through uploader, and recording the
+// root reference in SelfAddress so the parent's marshal can address it.
 //
 // Returns the root node's reference. Mirrors bee-js
 // MantarayNode.saveRecursively.
-//
-// LIMITATION: each marshaled node must fit in a single chunk
-// (ChunkSize bytes). Mantaray's trie structure keeps individual
-// nodes small in practice — a node carries at most 256 forks — but
-// extreme cases would need multi-chunk node serialization, tracked
-// alongside the same limitation in CalculateSelfAddress.
 func (n *MantarayNode) SaveRecursively(ctx context.Context, uploader ChunkUploader, batchID swarm.BatchID) (swarm.Reference, error) {
 	for _, fork := range n.Forks {
 		if len(fork.Node.SelfAddress) > 0 {
@@ -44,20 +37,28 @@ func (n *MantarayNode) SaveRecursively(ctx context.Context, uploader ChunkUpload
 	if err != nil {
 		return swarm.Reference{}, err
 	}
-	if len(data) > swarm.ChunkSize {
-		return swarm.Reference{}, fmt.Errorf("manifest: marshaled node size %d exceeds single chunk; multi-chunk BMT not yet implemented", len(data))
-	}
 
-	span := make([]byte, swarm.SpanSize)
-	binary.LittleEndian.PutUint64(span, uint64(len(data)))
-	body := make([]byte, 0, swarm.SpanSize+len(data))
-	body = append(body, span...)
-	body = append(body, data...)
-
-	ref, err := uploader(ctx, batchID, body)
-	if err != nil {
+	var uploadErr error
+	chunker := swarm.NewFileChunker(func(c swarm.Chunk) error {
+		if _, err := uploader(ctx, batchID, c.Data()); err != nil {
+			uploadErr = err
+			return err
+		}
+		return nil
+	})
+	if _, err := chunker.Write(data); err != nil {
+		if uploadErr != nil {
+			return swarm.Reference{}, uploadErr
+		}
 		return swarm.Reference{}, err
 	}
-	n.SelfAddress = ref.Raw()
-	return ref, nil
+	root, err := chunker.Finalize()
+	if err != nil {
+		if uploadErr != nil {
+			return swarm.Reference{}, uploadErr
+		}
+		return swarm.Reference{}, err
+	}
+	n.SelfAddress = root.Address.Raw()
+	return root.Address, nil
 }

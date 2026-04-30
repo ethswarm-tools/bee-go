@@ -36,8 +36,8 @@ func TestService_Tags(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateTag error = %v", err)
 	}
-	if tag.Uid != 123 {
-		t.Errorf("Tag UID = %v, want 123", tag.Uid)
+	if tag.UID != 123 {
+		t.Errorf("Tag UID = %v, want 123", tag.UID)
 	}
 
 	tag2, err := c.GetTag(context.Background(), 123)

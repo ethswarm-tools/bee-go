@@ -8,11 +8,11 @@ import (
 )
 
 // UploadResult is the standardized return shape for every upload endpoint.
-// Mirrors bee-js's UploadResult. TagUid is 0 when Bee did not return a
+// Mirrors bee-js's UploadResult. TagUID is 0 when Bee did not return a
 // swarm-tag header. HistoryAddress is nil when no ACT history was created.
 type UploadResult struct {
 	Reference      swarm.Reference
-	TagUid         uint32
+	TagUID         uint32
 	HistoryAddress *swarm.Reference
 }
 
@@ -27,7 +27,7 @@ func ReadUploadResult(refHex string, headers http.Header) (UploadResult, error) 
 	res := UploadResult{Reference: ref}
 	if tag := headers.Get("Swarm-Tag"); tag != "" {
 		if v, err := strconv.ParseUint(tag, 10, 32); err == nil {
-			res.TagUid = uint32(v)
+			res.TagUID = uint32(v)
 		}
 	}
 	if hist := headers.Get("Swarm-Act-History-Address"); hist != "" {
@@ -42,7 +42,7 @@ func ReadUploadResult(refHex string, headers http.Header) (UploadResult, error) 
 // downloading a file (Content-Disposition / swarm-tag-uid / Content-Type).
 type FileHeaders struct {
 	Name        string
-	TagUid      uint32
+	TagUID      uint32
 	ContentType string
 }
 
@@ -58,7 +58,7 @@ func ParseFileHeaders(headers http.Header) FileHeaders {
 	}
 	if tag := headers.Get("Swarm-Tag-Uid"); tag != "" {
 		if v, err := strconv.ParseUint(tag, 10, 32); err == nil {
-			out.TagUid = uint32(v)
+			out.TagUID = uint32(v)
 		}
 	}
 	return out
