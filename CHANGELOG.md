@@ -8,6 +8,26 @@ version bump.
 
 ## [Unreleased]
 
+## [1.0.1] — 2026-05-01
+
+### Added
+
+- `LICENSE` file at the repository root with the MIT license text (the
+  `README.md` already declared MIT but the file was missing). Required
+  by pkg.go.dev's redistributable-license policy — without a license
+  file at the module root, full Go-doc rendering is suppressed and
+  the page only shows the directory tree. With this file in place,
+  `https://pkg.go.dev/github.com/ethswarm-tools/bee-go@v1.0.1` renders
+  the full package, type, and function documentation.
+
+### Fixed (CI, on `main` since v1.0.0)
+
+- Bumped `golangci/golangci-lint-action` v6 → v7 for golangci-lint
+  v2 support.
+- Pinned `golangci-lint` to `v2.11.3` (built with go1.26) so the CI
+  matrix's stable Go entry doesn't pull a forward-incompatible
+  build.
+
 ## [1.0.0] — 2026-04-30
 
 First stable release. SemVer compatibility promise is now in effect for
