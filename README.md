@@ -62,14 +62,16 @@ import-pruning Go gives us for free.)
 
 | Package | Purpose |
 |---|---|
-| `pkg/swarm` | Typed bytes (`Reference`, `BatchID`, `EthAddress`, `PublicKey`, `Signature`, …), token math (`BZZ`, `DAI`), `Duration`, `Size`, BMT chunk ops, SOC creation, GSOC mining, typed errors (`BeeError`, `BeeArgumentError`, `BeeResponseError`), `CheckResponse`. |
-| `pkg/api` | Core HTTP client + shared options/headers. `UploadOptions`, `RedundantUploadOptions`, `FileUploadOptions`, `CollectionUploadOptions`, `DownloadOptions`, `PostageBatchOptions`. Pin/Tag/Stewardship/Grantee/Envelope endpoints. |
-| `pkg/file` | Data, file, chunk, SOC, feed and collection uploads/downloads. `FeedReader`/`FeedWriter`, `MakeFeedIdentifier`, `FeedUpdateChunkReference`, `IsFeedRetrievable`, `AreAllSequentialFeedsUpdateRetrievable`, in-memory `UploadCollectionEntries`. |
-| `pkg/postage` | Postage batch CRUD + stamp math (`GetStampCost`, `GetStampDuration`, `GetAmountForDuration`, `GetDepthForSize`, `GetStampEffectiveBytes`). `Stamper` for offline stamp generation. |
-| `pkg/debug` | Node info, peers, topology, balances, settlements, chequebook, stake, transactions, redistribution. |
-| `pkg/pss` | PSS send/subscribe/receive over WebSockets. |
-| `pkg/gsoc` | Generic Single-Owner Chunk send/subscribe (built on `pkg/file` SOC upload). |
-| `pkg/manifest` | Mantaray trie + v0.2 wire format (single-chunk). |
+| [`pkg/swarm`](https://pkg.go.dev/github.com/ethswarm-tools/bee-go/pkg/swarm) | Typed bytes (`Reference`, `BatchID`, `EthAddress`, `PublicKey`, `Signature`, …), token math (`BZZ`, `DAI`), `Duration`, `Size`, BMT chunk ops, SOC creation, GSOC mining, typed errors (`BeeError`, `BeeArgumentError`, `BeeResponseError`), `CheckResponse`. |
+| [`pkg/api`](https://pkg.go.dev/github.com/ethswarm-tools/bee-go/pkg/api) | Core HTTP client + shared options/headers. `UploadOptions`, `RedundantUploadOptions`, `FileUploadOptions`, `CollectionUploadOptions`, `DownloadOptions`, `PostageBatchOptions`. Pin/Tag/Stewardship/Grantee/Envelope endpoints. |
+| [`pkg/file`](https://pkg.go.dev/github.com/ethswarm-tools/bee-go/pkg/file) | Data, file, chunk, SOC, feed and collection uploads/downloads. `FeedReader`/`FeedWriter`, `MakeFeedIdentifier`, `FeedUpdateChunkReference`, `IsFeedRetrievable`, `AreAllSequentialFeedsUpdateRetrievable`, in-memory `UploadCollectionEntries`. |
+| [`pkg/postage`](https://pkg.go.dev/github.com/ethswarm-tools/bee-go/pkg/postage) | Postage batch CRUD + stamp math (`GetStampCost`, `GetStampDuration`, `GetAmountForDuration`, `GetDepthForSize`, `GetStampEffectiveBytes`). `Stamper` for offline stamp generation. |
+| [`pkg/debug`](https://pkg.go.dev/github.com/ethswarm-tools/bee-go/pkg/debug) | Node info, peers, topology, balances, settlements, chequebook, stake, transactions, redistribution. |
+| [`pkg/pss`](https://pkg.go.dev/github.com/ethswarm-tools/bee-go/pkg/pss) | PSS send/subscribe/receive over WebSockets. |
+| [`pkg/gsoc`](https://pkg.go.dev/github.com/ethswarm-tools/bee-go/pkg/gsoc) | Generic Single-Owner Chunk send/subscribe (built on `pkg/file` SOC upload). |
+| [`pkg/manifest`](https://pkg.go.dev/github.com/ethswarm-tools/bee-go/pkg/manifest) | Mantaray trie + v0.2 wire format (single-chunk). |
+
+Full API reference: [pkg.go.dev/github.com/ethswarm-tools/bee-go](https://pkg.go.dev/github.com/ethswarm-tools/bee-go).
 
 Top-level `Client` (in `client.go`) wires every sub-service to the same
 HTTP client and base URL. High-level helpers that span multiple

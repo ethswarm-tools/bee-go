@@ -8,6 +8,20 @@ version bump.
 
 ## [Unreleased]
 
+## [1.0.2] — 2026-05-01
+
+### Added
+
+- README "Package layout" table now links each `pkg/*` row directly
+  to its pkg.go.dev page, plus a one-line "Full API reference"
+  pointer above the top-level `Client` description. The root
+  pkg.go.dev page only renders the thin top-level `Client` wrapper
+  (Client, ClientOption, NewClient, BuyStorage, ExtendStorage,
+  GetStorageCost) — the bulk of the surface (95 types, 31 free
+  functions, plus all sub-service methods) lives in the sub-package
+  pages, which were previously discoverable only via pkg.go.dev's
+  Directories tree. Direct links cut the discovery step.
+
 ## [1.0.1] — 2026-05-01
 
 ### Added
