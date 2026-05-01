@@ -8,6 +8,49 @@ version bump.
 
 ## [Unreleased]
 
+### Added
+
+- **godoc landing page.** Root `doc.go` adds a package-level overview
+  with a quickstart snippet, a sub-package map, dev-mode notes, and
+  pointers to the error model and `examples/`. Previously the
+  pkg.go.dev landing page rendered only the type list with no
+  prose — now it opens with a complete onboarding read.
+- **Per-subpackage doc.go.** New `doc.go` in each of `pkg/api`,
+  `pkg/debug`, `pkg/file`, `pkg/postage`, `pkg/pss`, `pkg/swarm`
+  giving each sub-package an overview, headline-piece list, and
+  bee-js mirrors statement. (`pkg/gsoc` and `pkg/manifest` already
+  had package-level docs and are unchanged.)
+- **`example_test.go`.** Pkg.go.dev-rendered `Example*` functions for
+  `NewClient` (health check), `Client.UploadData`, `Client.DownloadData`,
+  `Client.BuyStorage`, and the typed-error inspection pattern. These
+  show up inline alongside the symbol on pkg.go.dev.
+- **Type / option doc upgrades.** Replaced the template-y "X handles Y
+  operations" doc on `Client`, `*api.Service`, `*debug.Service`,
+  `*file.Service`, `*postage.Service`, `*pss.Service`, `*swarm.Service`
+  with one-paragraph descriptions that name the headline endpoints.
+  `Client` field comments now describe each sub-service. `NewClient`,
+  `WithHTTPClient`, and `ClientOption` got expanded prose covering the
+  defaults, when to override, and what the contract is.
+- **Operational sections in root `doc.go`.** Added Bee version
+  compatibility (pinned to 2.7.1 / API 7.4.1), authentication +
+  timeouts + proxies (with `WithHTTPClient` snippet), concurrency,
+  cancellation, streaming vs. buffered transfers, errors-and-
+  retryability, observability, testing (with `httptest.Server`
+  example), common pitfalls (batch usability, dilute one-way,
+  encrypted-vs-plain references, feed signer pairing, dev-mode 404s),
+  and Go version (1.25+).
+- **Postage usability + dilute-one-way notes** in `pkg/postage/doc.go`:
+  paragraph on the ~2-3 minute Sepolia delay before a batch flips
+  `Usable: true`, and a paragraph on `DiluteBatch` being one-way.
+- **File streaming notes** in `pkg/file/doc.go`: streaming-by-default
+  download semantics, the `io.Copy` vs. `io.ReadAll` OOM warning, and
+  cancellation behavior of `StreamDirectory` /
+  `StreamCollectionEntries`.
+- **Dev-mode 404 list** in `dev.go`: explicit list of every endpoint
+  that returns 404 against `bee dev` (chequebook, settlements, stake,
+  pending transactions, chain-state reads, accounting, balances, RC
+  hash, and the high-level helpers that internally call them).
+
 ## [1.0.2] — 2026-05-01
 
 ### Added
