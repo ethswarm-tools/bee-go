@@ -67,7 +67,7 @@ func run() error {
 	url := getenv("BEE_URL", "http://localhost:1633")
 	args := os.Args[1:]
 	if len(args) == 0 {
-		return fmt.Errorf("usage: swarm-vault <init|put|get|list|rm> ...")
+		return fmt.Errorf("usage: swarm-vault <init|put|get|list|rm>")
 	}
 	client, err := bee.NewClient(url)
 	if err != nil {

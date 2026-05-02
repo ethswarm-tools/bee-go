@@ -163,16 +163,16 @@ func (s *Service) MigrateStake(ctx context.Context) (string, error) {
 
 // RedistributionStateResponse represents the redistribution state.
 type RedistributionStateResponse struct {
-	MinimumGasFunds           *big.Int `json:"minimumGasFunds"`
-	HasSufficientFunds        bool     `json:"hasSufficientFunds"`
-	IsFrozen                  bool     `json:"isFrozen"`
-	IsFullySynced             bool     `json:"isFullySynced"`
-	Phase                     string   `json:"phase"`
-	Round                     uint64   `json:"round"`
-	LastWonRound              uint64   `json:"lastWonRound"`
-	LastPlayedRound           uint64   `json:"lastPlayedRound"`
-	LastFrozenRound           uint64   `json:"lastFrozenRound"`
-	LastSelectedRound         uint64   `json:"lastSelectedRound"`
+	MinimumGasFunds    *big.Int `json:"minimumGasFunds"`
+	HasSufficientFunds bool     `json:"hasSufficientFunds"`
+	IsFrozen           bool     `json:"isFrozen"`
+	IsFullySynced      bool     `json:"isFullySynced"`
+	Phase              string   `json:"phase"`
+	Round              uint64   `json:"round"`
+	LastWonRound       uint64   `json:"lastWonRound"`
+	LastPlayedRound    uint64   `json:"lastPlayedRound"`
+	LastFrozenRound    uint64   `json:"lastFrozenRound"`
+	LastSelectedRound  uint64   `json:"lastSelectedRound"`
 	// Bee returns this as a fractional float (e.g. 37.96302), not an
 	// integer.
 	LastSampleDurationSeconds float64  `json:"lastSampleDurationSeconds"`

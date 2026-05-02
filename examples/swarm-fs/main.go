@@ -53,7 +53,7 @@ func main() {
 func run() error {
 	args := os.Args[1:]
 	if len(args) == 0 {
-		return fmt.Errorf("usage: swarm-fs <init|add|mv|rm|ls|publish> ...")
+		return fmt.Errorf("usage: swarm-fs <init|add|mv|rm|ls|publish>")
 	}
 	switch args[0] {
 	case "init":

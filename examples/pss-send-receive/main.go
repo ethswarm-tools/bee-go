@@ -46,7 +46,7 @@ func main() {
 
 func run() error {
 	if len(os.Args) < 2 {
-		return fmt.Errorf("usage: pss-send-receive <listen|send> ...")
+		return fmt.Errorf("usage: pss-send-receive <listen|send>")
 	}
 	mode := os.Args[1]
 	url := getenv("BEE_URL", "http://localhost:1633")

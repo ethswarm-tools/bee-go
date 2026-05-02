@@ -51,13 +51,13 @@ const (
 )
 
 type relayState struct {
-	BatchID        string   `json:"batch_id"`
-	SignerHex      string   `json:"signer_hex"`
-	Depth          uint8    `json:"depth"`
-	Buckets        []uint32 `json:"buckets"`
-	UploadedFiles  uint32   `json:"uploaded_files"`
-	UploadedBytes  uint64   `json:"uploaded_bytes"`
-	RejectedFiles  uint32   `json:"rejected_files"`
+	BatchID       string   `json:"batch_id"`
+	SignerHex     string   `json:"signer_hex"`
+	Depth         uint8    `json:"depth"`
+	Buckets       []uint32 `json:"buckets"`
+	UploadedFiles uint32   `json:"uploaded_files"`
+	UploadedBytes uint64   `json:"uploaded_bytes"`
+	RejectedFiles uint32   `json:"rejected_files"`
 }
 
 func main() {

@@ -58,7 +58,7 @@ func main() {
 func run() error {
 	args := os.Args[1:]
 	if len(args) == 0 {
-		return fmt.Errorf("usage: swarm-keyring <new|import|list|export|address> ...")
+		return fmt.Errorf("usage: swarm-keyring <new|import|list|export|address>")
 	}
 	switch args[0] {
 	case "new":
