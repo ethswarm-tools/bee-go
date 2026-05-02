@@ -17,8 +17,8 @@ import (
 // by IsSupportedExactVersion / IsSupportedAPIVersion. Mirrors bee-js's
 // SUPPORTED_BEE_VERSION_EXACT / SUPPORTED_API_VERSION constants.
 const (
-	SupportedBeeVersionExact = "2.7.1-61fab37b"
-	SupportedAPIVersion      = "7.4.1"
+	SupportedBeeVersionExact = "2.7.2-rc1-83612d37"
+	SupportedAPIVersion      = "8.0.0"
 )
 
 // SupportedBeeVersion is SupportedBeeVersionExact stripped of the git

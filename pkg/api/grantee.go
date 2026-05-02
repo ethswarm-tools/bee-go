@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 
@@ -40,8 +41,18 @@ func (s *Service) GetGrantees(ctx context.Context, ref swarm.Reference) ([]strin
 		return nil, err
 	}
 
+	// Bee 2.7+ returns the grantees as a top-level JSON array; older
+	// versions wrapped it in {"grantees": [...]}. Try both shapes.
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	var arr []string
+	if err := json.Unmarshal(body, &arr); err == nil {
+		return arr, nil
+	}
 	var res GranteesResponse
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := json.Unmarshal(body, &res); err != nil {
 		return nil, err
 	}
 	return res.Grantees, nil

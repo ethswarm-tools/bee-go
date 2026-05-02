@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/ethswarm-tools/bee-go"
 	"github.com/ethswarm-tools/bee-go/pkg/swarm"
@@ -47,7 +48,9 @@ func main() {
 	// 2. Upload the File
 	// Assuming it's a PNG image, we set the Content-Type to "image/png"
 	// Signature: UploadFile(ctx, batchID, reader, name, contentType, uploadOptions)
-	ref, err := client.File.UploadFile(context.Background(), batchID, file, filePath, "image/png", nil)
+	// Use just the filename (not the path) as Bee's `name` query param —
+	// slashes in the name produce a 400.
+	ref, err := client.File.UploadFile(context.Background(), batchID, file, filepath.Base(filePath), "image/png", nil)
 	if err != nil {
 		log.Fatalf("Upload failed: %v", err)
 	}

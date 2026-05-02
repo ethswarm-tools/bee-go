@@ -173,7 +173,9 @@ type RedistributionStateResponse struct {
 	LastPlayedRound           uint64   `json:"lastPlayedRound"`
 	LastFrozenRound           uint64   `json:"lastFrozenRound"`
 	LastSelectedRound         uint64   `json:"lastSelectedRound"`
-	LastSampleDurationSeconds uint64   `json:"lastSampleDurationSeconds"`
+	// Bee returns this as a fractional float (e.g. 37.96302), not an
+	// integer.
+	LastSampleDurationSeconds float64  `json:"lastSampleDurationSeconds"`
 	Block                     uint64   `json:"block"`
 	Reward                    *big.Int `json:"reward"`
 	Fees                      *big.Int `json:"fees"`
@@ -181,21 +183,21 @@ type RedistributionStateResponse struct {
 }
 
 type redistributionStateJSON struct {
-	MinimumGasFunds           string `json:"minimumGasFunds"`
-	HasSufficientFunds        bool   `json:"hasSufficientFunds"`
-	IsFrozen                  bool   `json:"isFrozen"`
-	IsFullySynced             bool   `json:"isFullySynced"`
-	Phase                     string `json:"phase"`
-	Round                     uint64 `json:"round"`
-	LastWonRound              uint64 `json:"lastWonRound"`
-	LastPlayedRound           uint64 `json:"lastPlayedRound"`
-	LastFrozenRound           uint64 `json:"lastFrozenRound"`
-	LastSelectedRound         uint64 `json:"lastSelectedRound"`
-	LastSampleDurationSeconds uint64 `json:"lastSampleDurationSeconds"`
-	Block                     uint64 `json:"block"`
-	Reward                    string `json:"reward"`
-	Fees                      string `json:"fees"`
-	IsHealthy                 bool   `json:"isHealthy"`
+	MinimumGasFunds           string  `json:"minimumGasFunds"`
+	HasSufficientFunds        bool    `json:"hasSufficientFunds"`
+	IsFrozen                  bool    `json:"isFrozen"`
+	IsFullySynced             bool    `json:"isFullySynced"`
+	Phase                     string  `json:"phase"`
+	Round                     uint64  `json:"round"`
+	LastWonRound              uint64  `json:"lastWonRound"`
+	LastPlayedRound           uint64  `json:"lastPlayedRound"`
+	LastFrozenRound           uint64  `json:"lastFrozenRound"`
+	LastSelectedRound         uint64  `json:"lastSelectedRound"`
+	LastSampleDurationSeconds float64 `json:"lastSampleDurationSeconds"`
+	Block                     uint64  `json:"block"`
+	Reward                    string  `json:"reward"`
+	Fees                      string  `json:"fees"`
+	IsHealthy                 bool    `json:"isHealthy"`
 }
 
 func (r *RedistributionStateResponse) UnmarshalJSON(b []byte) error {
