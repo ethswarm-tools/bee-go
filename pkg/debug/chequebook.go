@@ -3,6 +3,7 @@ package debug
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"math/big"
 	"net/http"
 	"net/url"
@@ -176,6 +177,41 @@ func (s *Service) WithdrawBZZToExternalWallet(ctx context.Context, amount *big.I
 // WithdrawDAIToExternalWallet is the bee-js name for WithdrawDAI.
 func (s *Service) WithdrawDAIToExternalWallet(ctx context.Context, amount *big.Int, address string) (string, error) {
 	return s.WithdrawDAI(ctx, amount, address)
+}
+
+// ChequebookAddress returns the on-chain chequebook contract address
+// served at GET /chequebook/address. Bee returns either a
+// "chequebookAddress" (camelCase) or "chequebook_address" (snake_case)
+// JSON key depending on version; we accept both. Mirrors bee-rs
+// DebugApi::chequebook_address and bee-py client.debug.chequebook_address.
+func (s *Service) ChequebookAddress(ctx context.Context) (string, error) {
+	u := s.baseURL.ResolveReference(&url.URL{Path: "chequebook/address"})
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if err := swarm.CheckResponse(resp); err != nil {
+		return "", err
+	}
+	var payload struct {
+		ChequebookAddressCamel string `json:"chequebookAddress"`
+		ChequebookAddressSnake string `json:"chequebook_address"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return "", err
+	}
+	if payload.ChequebookAddressCamel != "" {
+		return payload.ChequebookAddressCamel, nil
+	}
+	if payload.ChequebookAddressSnake != "" {
+		return payload.ChequebookAddressSnake, nil
+	}
+	return "", fmt.Errorf("/chequebook/address: missing chequebookAddress key")
 }
 
 // GetChequebookBalance retrieves the chequebook balance.

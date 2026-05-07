@@ -2,6 +2,7 @@ package swarm
 
 import (
 	"crypto/ecdsa"
+	"crypto/subtle"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -302,6 +303,26 @@ func (k PrivateKey) Sign(data []byte) (Signature, error) {
 func (k PrivateKey) ToECDSA() (*ecdsa.PrivateKey, error) {
 	return crypto.ToECDSA(k.raw)
 }
+
+// String returns a redacted placeholder, never the hex of the key
+// material. This overrides the [Bytes.String] / [Bytes.Hex]-based
+// fmt.Stringer so logs, panics, and stack traces don't leak the secret.
+// To deliberately export the hex, use PrivateKey.Bytes.Hex().
+func (k PrivateKey) String() string { return "PrivateKey(redacted)" }
+
+// Equal reports whether two PrivateKey values hold the same scalar in
+// constant time, defending against timing side-channels on hot
+// comparison paths. Mirrors bee-py PrivateKey.__eq__ (hmac.compare_digest)
+// and bee-rs PrivateKey::eq (subtle::ConstantTimeEq).
+func (k PrivateKey) Equal(other PrivateKey) bool {
+	return subtle.ConstantTimeCompare(k.raw, other.raw) == 1
+}
+
+// Zeroize wipes the private-key material in place. After calling
+// Zeroize the value is unusable; do not call PublicKey, Sign, or
+// ToECDSA on a zeroized key. Idiomatic Go pairs this with a defer at
+// the call-site that constructs the key.
+func (k *PrivateKey) Zeroize() { k.Bytes.Zeroize() }
 
 // ============================================================================
 // PublicKey (64 bytes uncompressed: X || Y)

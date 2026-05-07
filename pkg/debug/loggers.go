@@ -4,11 +4,19 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
+	"slices"
 
 	"github.com/ethswarm-tools/bee-go/pkg/swarm"
 )
+
+// LogLevels lists the verbosity tokens accepted by Bee's
+// PUT /loggers/{exp}/{verbosity} route (pkg/api/logger.go on the Bee
+// server). Anything outside this set is rejected with a 400; [SetLogger]
+// validates client-side before sending.
+var LogLevels = []string{"none", "error", "warning", "info", "debug", "all"}
 
 // Logger is one entry in the LoggerResponse.Loggers list.
 type Logger struct {
@@ -62,12 +70,22 @@ func (s *Service) getLoggers(ctx context.Context, path string) (LoggerResponse, 
 	return res, nil
 }
 
-// SetLoggerVerbosity sets verbosity for loggers matching expression.
-// The expression is base64-encoded into the URL. Mirrors bee-js
-// Bee.setLoggerVerbosity.
-func (s *Service) SetLoggerVerbosity(ctx context.Context, expression string) error {
+// SetLogger sets the verbosity of every logger matching expression.
+// The expression is base64-encoded into the URL per the Bee
+// PUT /loggers/{exp}/{verbosity} contract. verbosity must be one of
+// [LogLevels] ("none|error|warning|info|debug|all"); anything else is
+// rejected client-side with an Argument error before the request is
+// built.
+//
+// Pass "." as expression to bump every logger at once (Bee treats it
+// as a regex match-all). Mirrors bee-rs DebugApi::set_logger and
+// bee-py client.debug.set_logger.
+func (s *Service) SetLogger(ctx context.Context, expression, verbosity string) error {
+	if !slices.Contains(LogLevels, verbosity) {
+		return fmt.Errorf("verbosity %q not in %v", verbosity, LogLevels)
+	}
 	enc := base64.StdEncoding.EncodeToString([]byte(expression))
-	u := s.baseURL.ResolveReference(&url.URL{Path: "loggers/" + enc})
+	u := s.baseURL.ResolveReference(&url.URL{Path: "loggers/" + enc + "/" + verbosity})
 	req, err := http.NewRequestWithContext(ctx, http.MethodPut, u.String(), nil)
 	if err != nil {
 		return err
@@ -78,4 +96,20 @@ func (s *Service) SetLoggerVerbosity(ctx context.Context, expression string) err
 	}
 	defer resp.Body.Close()
 	return swarm.CheckResponse(resp)
+}
+
+// SetLoggerVerbosity is broken — Bee's actual route is
+// PUT /loggers/{exp}/{verbosity}; verbosity is mandatory in the path.
+// This method emits PUT /loggers/{exp} which 404s on every real Bee
+// build. It only ever "succeeded" against mock servers wired to the
+// wrong path.
+//
+// Deprecated: use [Service.SetLogger] instead — it takes both the
+// expression and verbosity and emits the correct path. Kept for
+// backwards compatibility; returns an error explaining the breakage.
+func (s *Service) SetLoggerVerbosity(ctx context.Context, expression string) error {
+	_ = expression
+	_ = ctx
+	return fmt.Errorf("SetLoggerVerbosity is broken — Bee's route requires a verbosity component. " +
+		"Call SetLogger(ctx, expression, verbosity) instead")
 }

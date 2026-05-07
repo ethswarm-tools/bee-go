@@ -194,7 +194,7 @@ func TestService_Loggers(t *testing.T) {
 			w.Write([]byte(body))
 		case r.URL.Path == "/loggers/"+encoded && r.Method == http.MethodGet:
 			w.Write([]byte(body))
-		case r.URL.Path == "/loggers/"+encoded && r.Method == http.MethodPut:
+		case r.URL.Path == "/loggers/"+encoded+"/info" && r.Method == http.MethodPut:
 			putHit = r.URL.Path
 			w.WriteHeader(200)
 		default:
@@ -222,11 +222,19 @@ func TestService_Loggers(t *testing.T) {
 		t.Errorf("filtered loggers = %+v", got2.Loggers)
 	}
 
-	if err := c.SetLoggerVerbosity(context.Background(), exp); err != nil {
-		t.Fatalf("SetLoggerVerbosity: %v", err)
+	if err := c.SetLogger(context.Background(), exp, "info"); err != nil {
+		t.Fatalf("SetLogger: %v", err)
 	}
-	if putHit != "/loggers/"+encoded {
-		t.Errorf("PUT path = %q want %q", putHit, "/loggers/"+encoded)
+	if putHit != "/loggers/"+encoded+"/info" {
+		t.Errorf("PUT path = %q want %q", putHit, "/loggers/"+encoded+"/info")
+	}
+	// SetLogger must reject verbosities outside LogLevels client-side.
+	if err := c.SetLogger(context.Background(), exp, "verbose"); err == nil {
+		t.Errorf("SetLogger accepted invalid verbosity")
+	}
+	// SetLoggerVerbosity is the deprecated stub; it must always error.
+	if err := c.SetLoggerVerbosity(context.Background(), exp); err == nil {
+		t.Errorf("SetLoggerVerbosity stub must always error")
 	}
 }
 

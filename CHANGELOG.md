@@ -8,6 +8,77 @@ version bump.
 
 ## [Unreleased]
 
+## [1.2.0] — 2026-05-07
+
+Brings bee-go in sync with bee-py 1.0.2 and bee-rs 1.6.0: closes the
+remaining surface-parity gaps and ports the perf/security pass that
+shipped in those siblings.
+
+### Added — surface parity
+
+- **`Client.Ping(ctx) (time.Duration, error)`** issues `GET /health`
+  and returns the round-trip latency. Useful for connection-status
+  indicators in dashboards / TUIs. Mirrors bee-py `AsyncBee.ping`,
+  bee-rs `Client::ping`.
+- **`WithToken(token)` `ClientOption`** installs a Bearer-token
+  preset on every outbound request via a wrapper RoundTripper. No
+  more hand-rolling an `http.Client` with a Authorization header.
+- **`(*api.Service).CheckPins(ctx, *Reference)`** streams the
+  `GET /pins/check` NDJSON response into a slice of `PinIntegrity`
+  rows (`Reference`, `Total`, `Missing`, `Invalid`, plus the
+  `IsHealthy()` helper). Pass `nil` to check every pinned ref or a
+  pointer to limit the scan to one reference.
+- **`(*debug.Service).ChequebookAddress(ctx)`** returns the on-chain
+  chequebook contract address from `GET /chequebook/address`,
+  accepting either the `chequebookAddress` (camelCase) or
+  `chequebook_address` (snake_case) JSON keys that different Bee
+  builds emit.
+- **`(*debug.Service).SetLogger(ctx, expression, verbosity)`**
+  emits `PUT /loggers/{base64-exp}/{verbosity}` (the actual Bee
+  route). `LogLevels` (`"none|error|warning|info|debug|all"`) is
+  exported so callers can validate without a round-trip.
+- **`bee.HTTPLogger`** — package-level `*slog.Logger` used by a
+  request-logging RoundTripper that the default client installs in
+  `NewClient`. Each round-trip emits a `slog.Debug` record with
+  `method`, `url`, `status`, `elapsed_ms`; transport errors emit
+  `slog.Error`. Silent unless the program configures slog at debug
+  level. Mirrors bee-py's `bee.http` logger.
+
+### Added — perf + security
+
+- **`DefaultHTTPTimeout = 60 * time.Second`** is now applied to the
+  `*http.Client` that `NewClient` builds. The stock `net/http` client
+  has no timeout, which can leave a stuck connection hanging forever.
+  Callers passing their own client via `WithHTTPClient` are responsible
+  for their own bound.
+- **BMT zero-subtree precomputation** (`pkg/swarm/bmt.go`).
+  `calculateBMTRoot` now hashes only the populated portion of a
+  4 KiB chunk and reuses precomputed all-zero subtree values for the
+  rest. Benchmarked at **~16.8× faster** for small chunks — small
+  payloads now cost ~ceil(log2(K))+1 keccak invocations instead of a
+  flat 127. Allocations drop from 135 → 15. Mirrors the bee-py /
+  bee-rs port. The output is byte-identical to the naive 128-segment
+  reduction (verified by `TestBMT_ZeroSubtreeMatchesNaive`).
+- **`PrivateKey.Equal(other)`** uses `crypto/subtle.ConstantTimeCompare`,
+  defending against timing side-channels on hot comparison paths.
+- **`PrivateKey.Zeroize()`** wipes the underlying scalar in place
+  (also exposed on `swarm.Bytes` for general use). Idiomatic Go pairs
+  this with a `defer` at the call-site that built the key.
+- **`PrivateKey.String()`** is now redacted (returns
+  `"PrivateKey(redacted)"` instead of the hex), so logs, panics, and
+  stack traces don't leak the secret. Use `PrivateKey.Bytes.Hex()` to
+  deliberately export it.
+
+### Deprecated
+
+- **`(*debug.Service).SetLoggerVerbosity(ctx, expression)`** is now a
+  stub that always returns an error. Bee's actual route is
+  `PUT /loggers/{exp}/{verbosity}` — verbosity is mandatory in the
+  path; the old call emitted `PUT /loggers/{exp}` and 404'd against
+  every real Bee build. Callers must switch to `SetLogger`.
+
+## [1.1.0] — 2026-05-02
+
 ### Added
 
 - **godoc landing page.** Root `doc.go` adds a package-level overview
@@ -32,24 +103,30 @@ version bump.
   `WithHTTPClient`, and `ClientOption` got expanded prose covering the
   defaults, when to override, and what the contract is.
 - **Operational sections in root `doc.go`.** Added Bee version
-  compatibility (pinned to 2.7.1 / API 7.4.1), authentication +
-  timeouts + proxies (with `WithHTTPClient` snippet), concurrency,
-  cancellation, streaming vs. buffered transfers, errors-and-
-  retryability, observability, testing (with `httptest.Server`
-  example), common pitfalls (batch usability, dilute one-way,
-  encrypted-vs-plain references, feed signer pairing, dev-mode 404s),
-  and Go version (1.25+).
-- **Postage usability + dilute-one-way notes** in `pkg/postage/doc.go`:
-  paragraph on the ~2-3 minute Sepolia delay before a batch flips
-  `Usable: true`, and a paragraph on `DiluteBatch` being one-way.
-- **File streaming notes** in `pkg/file/doc.go`: streaming-by-default
-  download semantics, the `io.Copy` vs. `io.ReadAll` OOM warning, and
-  cancellation behavior of `StreamDirectory` /
-  `StreamCollectionEntries`.
-- **Dev-mode 404 list** in `dev.go`: explicit list of every endpoint
-  that returns 404 against `bee dev` (chequebook, settlements, stake,
-  pending transactions, chain-state reads, accounting, balances, RC
-  hash, and the high-level helpers that internally call them).
+  compatibility, authentication + timeouts + proxies (with
+  `WithHTTPClient` snippet), concurrency, cancellation, streaming vs.
+  buffered transfers, errors-and-retryability, observability, testing
+  (with `httptest.Server` example), common pitfalls (batch usability,
+  dilute one-way, encrypted-vs-plain references, feed signer pairing,
+  dev-mode 404s), and Go version (1.25+).
+- **Postage usability + dilute-one-way notes** in `pkg/postage/doc.go`.
+- **File streaming notes** in `pkg/file/doc.go`.
+- **Dev-mode 404 list** in `dev.go`.
+- **38 example programs** under `examples/` (Tier A fundamentals +
+  Tier B starter projects). See `examples/README.md`.
+
+### Changed
+
+- Pinned `SupportedBeeVersionExact` → `2.7.2-rc1-83612d37`,
+  `SupportedAPIVersion` → `8.0.0` (Bee 2.7.x moved the API major).
+
+### Fixed
+
+- `pkg/debug/stake.go`:
+  `RedistributionStateResponse.LastSampleDurationSeconds` is `float64`
+  (Bee returns a fractional float; `uint64` failed to deserialize).
+- `pkg/api/grantee.go`: `GetGrantees` now accepts both the modern Bee
+  array response and the older `{"grantees": [...]}` object.
 
 ## [1.0.2] — 2026-05-01
 

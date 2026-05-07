@@ -1,9 +1,11 @@
 package bee
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/ethswarm-tools/bee-go/pkg/api"
 	"github.com/ethswarm-tools/bee-go/pkg/debug"
@@ -14,6 +16,15 @@ import (
 	"github.com/ethswarm-tools/bee-go/pkg/swarm"
 	"github.com/gorilla/websocket"
 )
+
+// DefaultHTTPTimeout is the request-level timeout applied to the
+// *http.Client constructed by [NewClient] when no [WithHTTPClient]
+// override is supplied. Go's net/http stock default is *no* timeout,
+// which can leave a stuck connection hanging forever — bee-py /
+// bee-rs both ship a sensible bound. Users who pass their own
+// *http.Client via [WithHTTPClient] are responsible for setting their
+// own timeout.
+const DefaultHTTPTimeout = 60 * time.Second
 
 // Client is the top-level Bee API client. It bundles one sub-service
 // per Bee API domain (see the package doc for the layout); construct it
@@ -67,6 +78,41 @@ func WithHTTPClient(c *http.Client) ClientOption {
 	}
 }
 
+// WithToken installs a Bearer-token preset on every request issued by
+// the [Client]. Equivalent to building an *http.Client whose Transport
+// adds Authorization: Bearer <token> on every request and passing it
+// via [WithHTTPClient]. Mirrors bee-py AsyncBee.with_token / bee-rs
+// Client::with_token.
+//
+// Cannot be combined with [WithHTTPClient]; the last option wins.
+func WithToken(token string) ClientOption {
+	return func(client *Client) {
+		base := client.httpClient
+		if base == nil {
+			base = http.DefaultClient
+		}
+		transport := base.Transport
+		if transport == nil {
+			transport = http.DefaultTransport
+		}
+		client.httpClient = &http.Client{
+			Transport: &bearerTransport{token: token, base: transport},
+			Timeout:   base.Timeout,
+		}
+	}
+}
+
+type bearerTransport struct {
+	token string
+	base  http.RoundTripper
+}
+
+func (t *bearerTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	r := req.Clone(req.Context())
+	r.Header.Set("Authorization", "Bearer "+t.token)
+	return t.base.RoundTrip(r)
+}
+
 // NewClient constructs a [Client] pointing at a Bee node's REST API.
 // The url should be the base address (e.g. "http://localhost:1633");
 // a trailing slash is appended if missing so relative paths resolve
@@ -74,6 +120,9 @@ func WithHTTPClient(c *http.Client) ClientOption {
 // is ready to use.
 //
 // Returns an error only if rawURL fails to parse.
+//
+// The default *http.Client uses [DefaultHTTPTimeout]; supply
+// [WithHTTPClient] to override.
 func NewClient(rawURL string, opts ...ClientOption) (*Client, error) {
 	if !strings.HasSuffix(rawURL, "/") {
 		rawURL += "/"
@@ -84,9 +133,12 @@ func NewClient(rawURL string, opts ...ClientOption) (*Client, error) {
 	}
 
 	c := &Client{
-		baseURL:    u,
-		httpClient: http.DefaultClient,
-		dialer:     websocket.DefaultDialer,
+		baseURL: u,
+		httpClient: &http.Client{
+			Timeout:   DefaultHTTPTimeout,
+			Transport: &loggingTransport{base: http.DefaultTransport},
+		},
+		dialer: websocket.DefaultDialer,
 	}
 
 	for _, opt := range opts {
@@ -103,4 +155,15 @@ func NewClient(rawURL string, opts ...ClientOption) (*Client, error) {
 	c.GSOC = gsoc.NewService(c.baseURL, c.httpClient, c.dialer, c.File)
 
 	return c, nil
+}
+
+// Ping issues GET /health and returns the round-trip duration. Useful
+// for connection-status indicators in dashboards / TUIs. Mirrors
+// bee-rs Client::ping and bee-py AsyncBee.ping.
+func (c *Client) Ping(ctx context.Context) (time.Duration, error) {
+	start := time.Now()
+	if _, err := c.Debug.GetHealth(ctx); err != nil {
+		return 0, err
+	}
+	return time.Since(start), nil
 }

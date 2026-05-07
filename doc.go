@@ -74,7 +74,7 @@
 //
 // # Bee version compatibility
 //
-// This client targets Bee 2.7.1 / API version 7.4.1 (the values pinned
+// This client targets Bee 2.7.2-rc1 / API version 8.0.0 (the values pinned
 // in [pkg/debug.SupportedBeeVersionExact] and
 // [pkg/debug.SupportedAPIVersion]). Use [pkg/debug.Service.IsSupportedExactVersion]
 // for a strict match or [pkg/debug.Service.IsSupportedAPIVersion] for a
@@ -85,19 +85,22 @@
 //
 // # Authentication, timeouts, and proxies
 //
-// [Client] uses [http.DefaultClient] by default, which has no request
-// timeout, no auth, and inherits proxy settings from the standard
-// HTTP_PROXY / HTTPS_PROXY environment variables. For anything beyond a
-// trusted local node, pass a configured [http.Client] via [WithHTTPClient]:
+// [Client]'s default *[http.Client] applies [DefaultHTTPTimeout]
+// (60 s) to every request and inherits proxy settings from the
+// standard HTTP_PROXY / HTTPS_PROXY environment variables. To install
+// a Bearer-token preset, use [WithToken]:
 //
-//	tr := &authTransport{token: os.Getenv("BEE_TOKEN"), base: http.DefaultTransport}
-//	httpc := &http.Client{Transport: tr, Timeout: 30 * time.Second}
+//	c, _ := bee.NewClient("https://bee.example.com",
+//	    bee.WithToken(os.Getenv("BEE_TOKEN")))
+//
+// For full control over transport, timeout, or proxy, pass a
+// configured [http.Client] via [WithHTTPClient]:
+//
+//	httpc := &http.Client{Transport: myTransport, Timeout: 30 * time.Second}
 //	c, _ := bee.NewClient("https://bee.example.com", bee.WithHTTPClient(httpc))
 //
-// Where `authTransport` is a [http.RoundTripper] that adds an
-// `Authorization: Bearer …` header. Bee gates `/stamps`, `/chequebook`,
-// `/stake`, `/transactions`, and the operator endpoints behind tokens
-// in production deployments.
+// Bee gates `/stamps`, `/chequebook`, `/stake`, `/transactions`, and
+// the operator endpoints behind tokens in production deployments.
 //
 // No automatic retries are performed. If you need transport-level
 // retry, wrap the [http.RoundTripper] (e.g. with
@@ -157,12 +160,15 @@
 //
 // # Observability
 //
-// bee-go does not emit logs, metrics, or traces of its own. To
-// instrument, wrap the [http.RoundTripper] passed to [WithHTTPClient]
-// — that's the seam for request-level spans, latency histograms, and
-// audit logs. Bee's own [pkg/debug.Service.GetLoggers] /
-// [pkg/debug.Service.SetLoggerVerbosity] surface controls server-side
-// verbosity at runtime.
+// bee-go emits one [slog.Debug] record per HTTP round-trip via the
+// [HTTPLogger] (defaults to [slog.Default] grouped under "bee.http").
+// Records carry method / url / status / elapsed_ms attributes;
+// transport errors emit [slog.Error]. Records are silent unless the
+// program configures slog at debug level — point [HTTPLogger] at a
+// custom handler to capture them, or wrap the [http.RoundTripper]
+// passed to [WithHTTPClient] for richer instrumentation. Bee's own
+// [pkg/debug.Service.GetLoggers] / [pkg/debug.Service.SetLogger]
+// surface controls server-side verbosity at runtime.
 //
 // # Testing
 //
@@ -171,7 +177,7 @@
 //
 //	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 //	    w.Header().Set("Content-Type", "application/json")
-//	    w.Write([]byte(`{"status":"ok","version":"2.7.1","apiVersion":"7.4.1"}`))
+//	    w.Write([]byte(`{"status":"ok","version":"2.7.2","apiVersion":"8.0.0"}`))
 //	}))
 //	defer srv.Close()
 //	c, _ := bee.NewClient(srv.URL)

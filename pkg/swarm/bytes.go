@@ -72,6 +72,15 @@ func (b Bytes) IsZero() bool { return len(b.raw) == 0 }
 // Equal reports whether two Bytes hold the same byte sequence.
 func (b Bytes) Equal(other Bytes) bool { return bytes.Equal(b.raw, other.raw) }
 
+// Zeroize wipes the underlying bytes in place. Subsequent reads return
+// zero-valued bytes of the original length. Useful for clearing
+// sensitive material (e.g. PrivateKey) once it's no longer needed.
+func (b *Bytes) Zeroize() {
+	for i := range b.raw {
+		b.raw[i] = 0
+	}
+}
+
 // MarshalJSON encodes Bytes as a JSON hex string.
 func (b Bytes) MarshalJSON() ([]byte, error) {
 	return []byte(`"` + b.Hex() + `"`), nil
