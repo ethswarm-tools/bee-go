@@ -101,7 +101,7 @@ func (s *Service) GetHealth(ctx context.Context) (HealthResponse, error) {
 		return HealthResponse{}, err
 	}
 	var res HealthResponse
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return HealthResponse{}, err
 	}
 	return res, nil
@@ -181,7 +181,7 @@ func (s *Service) IsGateway(ctx context.Context) (bool, error) {
 	var res struct {
 		Gateway bool `json:"gateway"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return false, err
 	}
 	return res.Gateway, nil
@@ -241,7 +241,7 @@ func (s *Service) Status(ctx context.Context) (StatusResponse, error) {
 	}
 
 	var res StatusResponse
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return StatusResponse{}, err
 	}
 
@@ -279,7 +279,7 @@ func (s *Service) StatusPeers(ctx context.Context) ([]PeerStatus, error) {
 	var res struct {
 		Snapshots []PeerStatus `json:"snapshots"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return nil, err
 	}
 	return res.Snapshots, nil
@@ -315,7 +315,7 @@ func (s *Service) StatusNeighborhoods(ctx context.Context) ([]Neighborhood, erro
 	var res struct {
 		Neighborhoods []Neighborhood `json:"neighborhoods"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return nil, err
 	}
 	return res.Neighborhoods, nil
@@ -340,7 +340,7 @@ func (s *Service) GetWelcomeMessage(ctx context.Context) (string, error) {
 	var res struct {
 		WelcomeMessage string `json:"welcomeMessage"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return "", err
 	}
 	return res.WelcomeMessage, nil
@@ -395,7 +395,7 @@ func (s *Service) NodeInfo(ctx context.Context) (*NodeInfo, error) {
 	}
 
 	var info NodeInfo
-	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &info); err != nil {
 		return nil, err
 	}
 	return &info, nil
@@ -457,7 +457,7 @@ func (s *Service) ChainState(ctx context.Context) (ChainStateResponse, error) {
 	}
 
 	var res ChainStateResponse
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return ChainStateResponse{}, err
 	}
 	return res, nil
@@ -489,7 +489,7 @@ func (s *Service) ReserveState(ctx context.Context) (ReserveStateResponse, error
 	}
 
 	var res ReserveStateResponse
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return ReserveStateResponse{}, err
 	}
 	return res, nil
@@ -524,7 +524,7 @@ func (s *Service) Topology(ctx context.Context) (TopologyResponse, error) {
 	}
 
 	var res TopologyResponse
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return TopologyResponse{}, err
 	}
 	return res, nil
@@ -560,7 +560,7 @@ func (s *Service) Peers(ctx context.Context) (PeersResponse, error) {
 	}
 
 	var res PeersResponse
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return PeersResponse{}, err
 	}
 	return res, nil
@@ -594,7 +594,7 @@ func (s *Service) Addresses(ctx context.Context) (AddressesResponse, error) {
 	}
 
 	var res AddressesResponse
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return AddressesResponse{}, err
 	}
 	return res, nil

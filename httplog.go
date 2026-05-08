@@ -4,6 +4,8 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
+
+	"github.com/ethswarm-tools/bee-go/pkg/swarm"
 )
 
 // HTTPLogger is the [*slog.Logger] used by the request-logging
@@ -31,11 +33,18 @@ func (t *loggingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 	resp, err := t.base.RoundTrip(req)
 	elapsed := time.Since(start)
 
+	// Log the URL with query string and fragment stripped. Bee uses the
+	// query for SOC signatures and Act publisher keys; callers may also
+	// (incorrectly but defensively guarded against) put auth tokens
+	// there. The path itself is hex/identifier-only and considered
+	// public.
+	redacted := swarm.RedactURL(req.URL)
+
 	if err != nil {
 		HTTPLogger.LogAttrs(req.Context(), slog.LevelError,
 			"http request failed",
 			slog.String("method", req.Method),
-			slog.String("url", req.URL.String()),
+			slog.String("url", redacted),
 			slog.Int64("elapsed_ms", elapsed.Milliseconds()),
 			slog.String("error", err.Error()),
 		)
@@ -44,7 +53,7 @@ func (t *loggingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 	HTTPLogger.LogAttrs(req.Context(), slog.LevelDebug,
 		"http request",
 		slog.String("method", req.Method),
-		slog.String("url", req.URL.String()),
+		slog.String("url", redacted),
 		slog.Int("status", resp.StatusCode),
 		slog.Int64("elapsed_ms", elapsed.Milliseconds()),
 	)

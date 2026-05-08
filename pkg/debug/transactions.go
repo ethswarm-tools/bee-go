@@ -96,7 +96,7 @@ func (s *Service) GetAllPendingTransactions(ctx context.Context) ([]TransactionI
 	var res struct {
 		PendingTransactions []TransactionInfo `json:"pendingTransactions"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return nil, err
 	}
 	return res.PendingTransactions, nil
@@ -119,7 +119,7 @@ func (s *Service) GetPendingTransaction(ctx context.Context, txHash string) (Tra
 		return TransactionInfo{}, err
 	}
 	var res TransactionInfo
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return TransactionInfo{}, err
 	}
 	return res, nil
@@ -145,7 +145,7 @@ func (s *Service) RebroadcastPendingTransaction(ctx context.Context, txHash stri
 	var res struct {
 		TransactionHash string `json:"transactionHash"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return "", err
 	}
 	return res.TransactionHash, nil
@@ -175,7 +175,7 @@ func (s *Service) CancelPendingTransaction(ctx context.Context, txHash string, g
 	var res struct {
 		TransactionHash string `json:"transactionHash"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return "", err
 	}
 	return res.TransactionHash, nil

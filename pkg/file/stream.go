@@ -74,6 +74,9 @@ func HashDirectory(dir string) (swarm.Reference, error) {
 // or when callers want a deterministic per-file content reference.
 func (s *Service) StreamCollectionEntries(ctx context.Context, batchID swarm.BatchID, entries []CollectionEntry, opts *StreamOptions) (api.UploadResult, error) {
 	collectionOpts := streamCollectionOpts(opts)
+	if err := api.ValidateCollectionUploadOptions(collectionOpts); err != nil {
+		return api.UploadResult{}, err
+	}
 	uploader := s.chunkUploader(batchID, collectionOpts)
 
 	var (
@@ -212,6 +215,12 @@ func readDirAsEntries(dir string) ([]CollectionEntry, error) {
 			return walkErr
 		}
 		if d.IsDir() {
+			return nil
+		}
+		// Skip symlinks (see UploadCollection for rationale): os.ReadFile
+		// follows links, so a symlink in the upload root would exfiltrate
+		// arbitrary files into the collection.
+		if d.Type()&fs.ModeSymlink != 0 {
 			return nil
 		}
 		rel, err := filepath.Rel(dir, path)

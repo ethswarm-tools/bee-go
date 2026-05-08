@@ -32,7 +32,7 @@ func (s *Service) GetStake(ctx context.Context) (*big.Int, error) {
 	var res struct {
 		StakedAmount string `json:"stakedAmount"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return nil, err
 	}
 
@@ -64,7 +64,7 @@ func (s *Service) Stake(ctx context.Context, amount *big.Int) (string, error) {
 	var res struct {
 		TxHash string `json:"txHash"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return "", err
 	}
 	return res.TxHash, nil
@@ -96,7 +96,7 @@ func (s *Service) GetWithdrawableStake(ctx context.Context) (*big.Int, error) {
 	var res struct {
 		WithdrawableAmount string `json:"withdrawableAmount"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return nil, err
 	}
 
@@ -128,7 +128,7 @@ func (s *Service) WithdrawSurplusStake(ctx context.Context) (string, error) {
 	var res struct {
 		TxHash string `json:"txHash"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return "", err
 	}
 	return res.TxHash, nil
@@ -155,7 +155,7 @@ func (s *Service) MigrateStake(ctx context.Context) (string, error) {
 	var res struct {
 		TxHash string `json:"txHash"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return "", err
 	}
 	return res.TxHash, nil
@@ -252,7 +252,7 @@ func (s *Service) RedistributionState(ctx context.Context) (RedistributionStateR
 	}
 
 	var res RedistributionStateResponse
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return RedistributionStateResponse{}, err
 	}
 	return res, nil

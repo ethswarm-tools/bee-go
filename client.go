@@ -79,10 +79,17 @@ func WithHTTPClient(c *http.Client) ClientOption {
 }
 
 // WithToken installs a Bearer-token preset on every request issued by
-// the [Client]. Equivalent to building an *http.Client whose Transport
-// adds Authorization: Bearer <token> on every request and passing it
-// via [WithHTTPClient]. Mirrors bee-py AsyncBee.with_token / bee-rs
-// Client::with_token.
+// the [Client] to the configured Bee host. Equivalent to building an
+// *http.Client whose Transport adds Authorization: Bearer <token> and
+// passing it via [WithHTTPClient]. Mirrors bee-py AsyncBee.with_token /
+// bee-rs Client::with_token.
+//
+// The token is only attached when the request URL's host matches the
+// host of the [Client]'s base URL. This protects against credential
+// leaks when a (compromised or misconfigured) Bee responds with a
+// 3xx redirect to a third-party host: every redirect hop goes back
+// through this RoundTripper, so a host check is the only thing that
+// stops the token from following the redirect chain.
 //
 // Cannot be combined with [WithHTTPClient]; the last option wins.
 func WithToken(token string) ClientOption {
@@ -96,18 +103,27 @@ func WithToken(token string) ClientOption {
 			transport = http.DefaultTransport
 		}
 		client.httpClient = &http.Client{
-			Transport: &bearerTransport{token: token, base: transport},
-			Timeout:   base.Timeout,
+			Transport: &bearerTransport{
+				token: token,
+				host:  client.baseURL.Host,
+				base:  transport,
+			},
+			Timeout: base.Timeout,
 		}
 	}
 }
 
 type bearerTransport struct {
 	token string
+	host  string
 	base  http.RoundTripper
 }
 
 func (t *bearerTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if req.URL.Host != t.host {
+		// Cross-host (likely a redirect): omit the token.
+		return t.base.RoundTrip(req)
+	}
 	r := req.Clone(req.Context())
 	r.Header.Set("Authorization", "Bearer "+t.token)
 	return t.base.RoundTrip(r)

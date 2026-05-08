@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -38,7 +37,7 @@ func (s *Service) PostEnvelope(ctx context.Context, batchID swarm.BatchID, ref s
 	}
 
 	var res EnvelopeResponse
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return EnvelopeResponse{}, err
 	}
 	return res, nil

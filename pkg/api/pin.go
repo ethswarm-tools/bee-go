@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/url"
 
@@ -93,11 +94,21 @@ func (s *Service) GetPin(ctx context.Context, ref swarm.Reference) (bool, error)
 	return false, swarm.NewBeeResponseError(http.MethodGet, u.String(), resp)
 }
 
+// MaxCheckPinsResponseBytes caps the cumulative size of a /pins/check
+// response. A misbehaving or compromised Bee could otherwise stream an
+// unbounded NDJSON body and exhaust the client's memory; the per-line
+// cap inside [Service.CheckPins] only bounds individual rows. 32 MiB
+// fits roughly 350k integrity rows — far above any realistic node.
+const MaxCheckPinsResponseBytes = 32 << 20
+
 // CheckPins streams the GET /pins/check NDJSON response and collects
 // the integrity rows into a slice. ref is optional — when nil, every
 // pinned reference is checked; otherwise only the named reference is
 // reported (as the ?ref={hex} query parameter). Returns an empty
 // slice on success when no rows match.
+//
+// The total response body is capped at [MaxCheckPinsResponseBytes];
+// individual NDJSON lines are capped at 1 MiB.
 //
 // Mirrors bee-rs ApiService::check_pins and bee-py
 // client.api.check_pins.
@@ -122,10 +133,16 @@ func (s *Service) CheckPins(ctx context.Context, ref *swarm.Reference) ([]PinInt
 	}
 
 	out := make([]PinIntegrity, 0)
-	scanner := bufio.NewScanner(resp.Body)
+	limited := io.LimitReader(resp.Body, MaxCheckPinsResponseBytes+1)
+	scanner := bufio.NewScanner(limited)
 	scanner.Buffer(make([]byte, 0, 4096), 1024*1024)
+	var consumed int64
 	for scanner.Scan() {
 		line := bytes.TrimSpace(scanner.Bytes())
+		consumed += int64(len(line)) + 1 // +1 for the consumed newline
+		if consumed > MaxCheckPinsResponseBytes {
+			return nil, swarm.NewBeeError("CheckPins: response exceeded MaxCheckPinsResponseBytes")
+		}
 		if len(line) == 0 {
 			continue
 		}
@@ -162,7 +179,7 @@ func (s *Service) ListPins(ctx context.Context) ([]swarm.Reference, error) {
 	var res struct {
 		References []swarm.Reference `json:"references"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return nil, err
 	}
 	return res.References, nil

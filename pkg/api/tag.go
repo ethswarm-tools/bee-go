@@ -45,7 +45,7 @@ func (s *Service) CreateTag(ctx context.Context) (Tag, error) {
 	}
 
 	var t Tag
-	if err := json.NewDecoder(resp.Body).Decode(&t); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &t); err != nil {
 		return Tag{}, err
 	}
 	return t, nil
@@ -70,7 +70,7 @@ func (s *Service) GetTag(ctx context.Context, uid uint32) (Tag, error) {
 	}
 
 	var t Tag
-	if err := json.NewDecoder(resp.Body).Decode(&t); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &t); err != nil {
 		return Tag{}, err
 	}
 	return t, nil
@@ -111,7 +111,7 @@ func (s *Service) ListTags(ctx context.Context, offset int, limit int) ([]Tag, e
 	var res struct {
 		Tags []Tag `json:"tags"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return nil, err
 	}
 	return res.Tags, nil

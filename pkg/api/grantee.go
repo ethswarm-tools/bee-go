@@ -91,7 +91,7 @@ func (s *Service) CreateGrantees(ctx context.Context, batchID swarm.BatchID, gra
 	}
 
 	var res GranteeResponse
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return GranteeResponse{}, err
 	}
 	return res, nil
@@ -133,7 +133,7 @@ func (s *Service) PatchGrantees(ctx context.Context, batchID swarm.BatchID, ref 
 	}
 
 	var res GranteeResponse
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return GranteeResponse{}, err
 	}
 	return res, nil

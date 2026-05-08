@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -40,7 +39,7 @@ func (s *Service) CreateFeedManifest(ctx context.Context, batchID swarm.BatchID,
 	var res struct {
 		Reference string `json:"reference"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return swarm.Reference{}, err
 	}
 
@@ -71,7 +70,7 @@ func (s *Service) GetFeedLookup(ctx context.Context, owner swarm.EthAddress, top
 	var res struct {
 		Reference string `json:"reference"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return swarm.Reference{}, err
 	}
 

@@ -8,6 +8,56 @@ version bump.
 
 ## [Unreleased]
 
+## [1.2.1] — 2026-05-08
+
+Security hardening pass on the v1.2.0 surface. No behavior change for
+well-formed inputs against a trusted Bee node.
+
+### Security
+
+- **Skip symlinks in directory walks** (`pkg/file/file.go`,
+  `pkg/file/stream.go`). `UploadCollection`, `UploadCollectionEntries`,
+  `StreamDirectory`, and `StreamCollectionEntries` no longer follow
+  symbolic links into upload roots. Previously, an attacker who could
+  plant a symlink in a directory being uploaded — pointing to e.g.
+  `/etc/passwd` — could exfiltrate the link target into the resulting
+  collection on the network. Now the walk skips entries whose mode
+  includes `os.ModeSymlink`.
+- **Scope `WithToken` Authorization to the configured Bee host**
+  (`client.go`). The bearer-token RoundTripper now compares
+  `req.URL.Host` against the [Client]'s base-URL host before adding
+  `Authorization`. Previously, a misbehaving or compromised Bee that
+  responded with a 3xx redirect to `attacker.com` would have leaked
+  the token to the attacker — every redirect leg goes back through the
+  same RoundTripper, so a host check is the only thing that stops the
+  token from following the chain.
+- **Cap response body sizes** (`pkg/swarm/json.go`). New
+  `swarm.DecodeJSONResponse(resp, &v)` helper wraps `resp.Body` in
+  `http.MaxBytesReader` with a 32 MiB cap (`MaxJSONResponseBytes`).
+  Every structured-JSON read site in the client (~66 call sites
+  across `pkg/api`, `pkg/debug`, `pkg/file`, `pkg/postage`) was swept
+  to use the helper. Previously, a runaway / compromised Bee streaming
+  an unbounded JSON body could OOM the client.
+- **Cap `CheckPins` NDJSON cumulative size** (`pkg/api/pin.go`). New
+  `MaxCheckPinsResponseBytes = 32 << 20`. The 1 MiB per-line cap
+  remains; an aggregate cap is now enforced via `io.LimitReader` and
+  a running counter inside the scan loop.
+- **Validate `CollectionUploadOptions.IndexDocument` /
+  `.ErrorDocument` for CR / LF / NUL** (`pkg/api/options.go`). New
+  `ValidateCollectionUploadOptions(opts) error`, called by every
+  collection upload helper before headers are written. Smuggling
+  `index_document="foo\r\nX-Injected: bar"` now fails fast with a
+  typed `*BeeArgumentError`. As defense in depth,
+  `PrepareCollectionUploadHeaders` itself silently omits values
+  containing those bytes if validation was skipped.
+- **Redact query strings in HTTP logger and error messages**
+  (`httplog.go`, `pkg/swarm/errors.go`). `swarm.RedactURL(*url.URL)`
+  drops the query string and fragment before formatting. Bee uses
+  the query string for SOC signatures (`?sig=`) and Act publisher
+  keys (`?recipient=`); callers may also (mistakenly) put auth
+  tokens there. The path itself is preserved (path segments are
+  hex/identifier-only).
+
 ## [1.2.0] — 2026-05-07
 
 Brings bee-go in sync with bee-py 1.0.2 and bee-rs 1.6.0: closes the

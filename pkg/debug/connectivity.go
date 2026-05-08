@@ -2,7 +2,6 @@ package debug
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -31,7 +30,7 @@ func (s *Service) GetBlocklist(ctx context.Context) ([]Peer, error) {
 	var res struct {
 		Peers []Peer `json:"peers"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return nil, err
 	}
 	return res.Peers, nil
@@ -78,7 +77,7 @@ func (s *Service) PingPeer(ctx context.Context, address string) (*string, error)
 	var res struct {
 		RTT string `json:"rtt"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return nil, err
 	}
 	return &res.RTT, nil
@@ -113,7 +112,7 @@ func (s *Service) ConnectPeer(ctx context.Context, multiaddr string) (string, er
 	var res struct {
 		Address string `json:"address"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return "", err
 	}
 	return res.Address, nil

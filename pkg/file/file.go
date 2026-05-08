@@ -3,7 +3,6 @@ package file
 import (
 	"archive/tar"
 	"context"
-	"encoding/json"
 	"io"
 	"net/http"
 	"net/url"
@@ -51,7 +50,7 @@ func (s *Service) UploadFile(ctx context.Context, batchID swarm.BatchID, data io
 	var res struct {
 		Reference string `json:"reference"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return api.UploadResult{}, err
 	}
 	return api.ReadUploadResult(res.Reference, resp.Header)
@@ -83,6 +82,9 @@ func (s *Service) DownloadFile(ctx context.Context, ref swarm.Reference, opts *a
 // indexFile (e.g. "index.html") is the document served when the collection
 // root is requested; opts may further specify an error document.
 func (s *Service) UploadCollection(ctx context.Context, batchID swarm.BatchID, dir string, opts *api.CollectionUploadOptions) (api.UploadResult, error) {
+	if err := api.ValidateCollectionUploadOptions(opts); err != nil {
+		return api.UploadResult{}, err
+	}
 	pr, pw := io.Pipe()
 	go func() {
 		tw := tar.NewWriter(pw)
@@ -95,6 +97,15 @@ func (s *Service) UploadCollection(ctx context.Context, batchID swarm.BatchID, d
 				return err
 			}
 			if rel == "." {
+				return nil
+			}
+			// Skip symlinks: opening a symlink path follows the link, so
+			// an attacker who plants a symlink in the upload root could
+			// exfiltrate arbitrary files (e.g. /etc/passwd) into the
+			// resulting collection. filepath.Walk doesn't recurse into
+			// symlinked directories, but it does visit symlinked files;
+			// skip them explicitly.
+			if info.Mode()&os.ModeSymlink != 0 {
 				return nil
 			}
 			header, err := tar.FileInfoHeader(info, info.Name())
@@ -146,7 +157,7 @@ func (s *Service) UploadCollection(ctx context.Context, batchID swarm.BatchID, d
 	var res struct {
 		Reference string `json:"reference"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return api.UploadResult{}, err
 	}
 	return api.ReadUploadResult(res.Reference, resp.Header)

@@ -101,7 +101,7 @@ func (s *Service) GetPostageBatches(ctx context.Context) ([]PostageBatch, error)
 	var res struct {
 		Stamps []PostageBatch `json:"stamps"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return nil, err
 	}
 	return res.Stamps, nil
@@ -177,7 +177,7 @@ func (s *Service) GetGlobalPostageBatches(ctx context.Context) ([]GlobalPostageB
 	var res struct {
 		Batches []GlobalPostageBatch `json:"batches"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return nil, err
 	}
 	return res.Batches, nil
@@ -224,7 +224,7 @@ func (s *Service) GetPostageBatchBuckets(ctx context.Context, batchID swarm.Batc
 		return PostageBatchBuckets{}, err
 	}
 	var res PostageBatchBuckets
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return PostageBatchBuckets{}, err
 	}
 	return res, nil
@@ -261,7 +261,7 @@ func (s *Service) CreatePostageBatch(ctx context.Context, amount *big.Int, depth
 	var res struct {
 		BatchID string `json:"batchID"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return swarm.BatchID{}, err
 	}
 	return swarm.BatchIDFromHex(res.BatchID)
@@ -330,7 +330,7 @@ func (s *Service) GetPostageBatch(ctx context.Context, batchID swarm.BatchID) (*
 	}
 
 	var pb PostageBatch
-	if err := json.NewDecoder(resp.Body).Decode(&pb); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &pb); err != nil {
 		return nil, err
 	}
 	return &pb, nil

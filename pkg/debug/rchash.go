@@ -2,7 +2,6 @@ package debug
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -31,7 +30,7 @@ func (s *Service) RCHash(ctx context.Context, depth int, anchor1 string, anchor2
 	var res struct {
 		DurationSeconds float64 `json:"durationSeconds"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return 0, err
 	}
 	return res.DurationSeconds, nil

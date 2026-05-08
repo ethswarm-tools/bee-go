@@ -99,7 +99,7 @@ func (s *Service) GetWallet(ctx context.Context) (WalletResponse, error) {
 	}
 
 	var res WalletResponse
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return WalletResponse{}, err
 	}
 	return res, nil
@@ -131,7 +131,7 @@ func (s *Service) WithdrawBZZ(ctx context.Context, amount *big.Int, address stri
 	var res struct {
 		TransactionHash string `json:"transactionHash"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return "", err
 	}
 	return res.TransactionHash, nil
@@ -163,7 +163,7 @@ func (s *Service) WithdrawDAI(ctx context.Context, amount *big.Int, address stri
 	var res struct {
 		TransactionHash string `json:"transactionHash"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return "", err
 	}
 	return res.TransactionHash, nil
@@ -202,7 +202,7 @@ func (s *Service) ChequebookAddress(ctx context.Context) (string, error) {
 		ChequebookAddressCamel string `json:"chequebookAddress"`
 		ChequebookAddressSnake string `json:"chequebook_address"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &payload); err != nil {
 		return "", err
 	}
 	if payload.ChequebookAddressCamel != "" {
@@ -233,7 +233,7 @@ func (s *Service) GetChequebookBalance(ctx context.Context) (ChequebookBalanceRe
 	}
 
 	var res ChequebookBalanceResponse
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return ChequebookBalanceResponse{}, err
 	}
 	return res, nil
@@ -264,7 +264,7 @@ func (s *Service) DepositTokens(ctx context.Context, amount *big.Int) (string, e
 	var res struct {
 		TransactionHash string `json:"transactionHash"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return "", err
 	}
 	return res.TransactionHash, nil
@@ -295,7 +295,7 @@ func (s *Service) WithdrawTokens(ctx context.Context, amount *big.Int) (string, 
 	var res struct {
 		TransactionHash string `json:"transactionHash"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return "", err
 	}
 	return res.TransactionHash, nil
@@ -389,7 +389,7 @@ func (s *Service) PeerSettlement(ctx context.Context, peer string) (Settlement, 
 		return Settlement{}, err
 	}
 	var res Settlement
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return Settlement{}, err
 	}
 	return res, nil
@@ -414,7 +414,7 @@ func (s *Service) Settlements(ctx context.Context) (SettlementsResponse, error) 
 	}
 
 	var res SettlementsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return SettlementsResponse{}, err
 	}
 	return res, nil
@@ -484,7 +484,7 @@ func (s *Service) LastCheques(ctx context.Context) (ChequesResponse, error) {
 	}
 
 	var res ChequesResponse
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return ChequesResponse{}, err
 	}
 	return res, nil
@@ -554,7 +554,7 @@ func (s *Service) GetLastChequesForPeer(ctx context.Context, peer string) (PeerC
 		return PeerCheques{}, err
 	}
 	var res PeerCheques
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return PeerCheques{}, err
 	}
 	return res, nil
@@ -636,7 +636,7 @@ func (s *Service) GetLastCashoutAction(ctx context.Context, peer string) (LastCa
 		return LastCashoutAction{}, err
 	}
 	var res LastCashoutAction
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return LastCashoutAction{}, err
 	}
 	return res, nil
@@ -667,7 +667,7 @@ func (s *Service) CashoutLastCheque(ctx context.Context, peer string, gasPrice *
 	var res struct {
 		TransactionHash string `json:"transactionHash"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return "", err
 	}
 	return res.TransactionHash, nil

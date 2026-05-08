@@ -3,7 +3,6 @@ package file
 import (
 	"archive/tar"
 	"context"
-	"encoding/json"
 	"io"
 	"net/http"
 	"net/url"
@@ -30,6 +29,9 @@ type CollectionEntry struct {
 //
 // Mirrors bee-js makeCollectionFromFileList + bzz.uploadCollection.
 func (s *Service) UploadCollectionEntries(ctx context.Context, batchID swarm.BatchID, entries []CollectionEntry, opts *api.CollectionUploadOptions) (api.UploadResult, error) {
+	if err := api.ValidateCollectionUploadOptions(opts); err != nil {
+		return api.UploadResult{}, err
+	}
 	pr, pw := io.Pipe()
 	go func() {
 		tw := tar.NewWriter(pw)
@@ -77,7 +79,7 @@ func (s *Service) UploadCollectionEntries(ctx context.Context, batchID swarm.Bat
 	var res struct {
 		Reference string `json:"reference"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return api.UploadResult{}, err
 	}
 	return api.ReadUploadResult(res.Reference, resp.Header)

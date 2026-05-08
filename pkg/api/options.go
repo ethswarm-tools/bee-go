@@ -176,21 +176,62 @@ func PrepareFileUploadHeaders(req *http.Request, batchID swarm.BatchID, opts *Fi
 }
 
 // PrepareCollectionUploadHeaders prepares the headers for a tar /bzz upload.
+//
+// IndexDocument and ErrorDocument become HTTP header values. Go's
+// net/http rejects header values containing CR / LF / NUL at request
+// write time (manifesting as a confusing "net/http: invalid header
+// field value" wrapped deep in the I/O path); to surface that as a
+// clean argument error early, callers should validate via
+// [ValidateCollectionUploadOptions] before invoking this helper.
+// PrepareCollectionUploadHeaders silently omits header values
+// containing those forbidden bytes so a misuse cannot smuggle a
+// header-injection payload onto the wire.
 func PrepareCollectionUploadHeaders(req *http.Request, batchID swarm.BatchID, opts *CollectionUploadOptions) {
 	if opts == nil {
 		PrepareUploadHeaders(req, batchID, nil)
 		return
 	}
 	PrepareUploadHeaders(req, batchID, &opts.UploadOptions)
-	if opts.IndexDocument != "" {
+	if opts.IndexDocument != "" && isValidHeaderValue(opts.IndexDocument) {
 		req.Header.Set("Swarm-Index-Document", opts.IndexDocument)
 	}
-	if opts.ErrorDocument != "" {
+	if opts.ErrorDocument != "" && isValidHeaderValue(opts.ErrorDocument) {
 		req.Header.Set("Swarm-Error-Document", opts.ErrorDocument)
 	}
 	if opts.RedundancyLevel > RedundancyLevelOff {
 		req.Header.Set("Swarm-Redundancy-Level", fmt.Sprintf("%d", opts.RedundancyLevel))
 	}
+}
+
+// ValidateCollectionUploadOptions returns a [swarm.BeeArgumentError] if
+// any field of opts cannot safely become an HTTP header value. nil opts
+// is valid (Bee defaults are used). Currently checks IndexDocument and
+// ErrorDocument for CR / LF / NUL bytes, which would otherwise be
+// rejected at request write time (or, on older Go versions, would
+// allow header injection).
+func ValidateCollectionUploadOptions(opts *CollectionUploadOptions) error {
+	if opts == nil {
+		return nil
+	}
+	if !isValidHeaderValue(opts.IndexDocument) {
+		return swarm.NewBeeArgumentError("CollectionUploadOptions.IndexDocument contains a forbidden byte (\\r, \\n, or \\0)", opts.IndexDocument)
+	}
+	if !isValidHeaderValue(opts.ErrorDocument) {
+		return swarm.NewBeeArgumentError("CollectionUploadOptions.ErrorDocument contains a forbidden byte (\\r, \\n, or \\0)", opts.ErrorDocument)
+	}
+	return nil
+}
+
+// isValidHeaderValue reports whether s contains no CR, LF, or NUL.
+// Empty strings are valid.
+func isValidHeaderValue(s string) bool {
+	for i := 0; i < len(s); i++ {
+		switch s[i] {
+		case '\r', '\n', 0:
+			return false
+		}
+	}
+	return true
 }
 
 // PrepareDownloadHeaders writes every applicable download header onto req.

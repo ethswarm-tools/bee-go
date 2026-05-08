@@ -57,7 +57,7 @@ func (s *Service) GetBalances(ctx context.Context) ([]Balance, error) {
 	}
 
 	var res BalancesResponse
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return nil, err
 	}
 	return res.Balances, nil
@@ -82,7 +82,7 @@ func (s *Service) GetPeerBalance(ctx context.Context, address string) (*Balance,
 	}
 
 	var res Balance
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -177,7 +177,7 @@ func (s *Service) GetAccounting(ctx context.Context) (map[string]PeerAccounting,
 	var res struct {
 		PeerData map[string]PeerAccounting `json:"peerData"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return nil, err
 	}
 	return res.PeerData, nil
@@ -207,7 +207,7 @@ func (s *Service) GetConsumed(ctx context.Context) ([]Balance, error) {
 	}
 
 	var res BalancesResponse
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return nil, err
 	}
 	return res.Balances, nil
@@ -232,7 +232,7 @@ func (s *Service) GetPeerConsumed(ctx context.Context, address string) (*Balance
 	}
 
 	var res Balance
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil

@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/ethswarm-tools/bee-go/pkg/api"
 	"github.com/ethswarm-tools/bee-go/pkg/swarm"
 )
 
@@ -130,5 +132,76 @@ func TestPrivateKey_Zeroize_WipesBytes(t *testing.T) {
 		if b != 0 {
 			t.Errorf("byte[%d] = %x after Zeroize", i, b)
 		}
+	}
+}
+
+// TestWithToken_StripsOnCrossHostRedirect ensures the bearer-token
+// transport DOES NOT resend Authorization to a redirect target on a
+// different host. A misbehaving / compromised Bee that responds 302
+// to attacker.com would otherwise leak the token to the attacker.
+func TestWithToken_StripsOnCrossHostRedirect(t *testing.T) {
+	var attackerSawAuth string
+	attacker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attackerSawAuth = r.Header.Get("Authorization")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"status":"ok","version":"x","apiVersion":"8.0.0"}`))
+	}))
+	defer attacker.Close()
+
+	bee := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, attacker.URL+"/health", http.StatusFound)
+	}))
+	defer bee.Close()
+
+	c, err := NewClient(bee.URL, WithToken("s3cr3t"))
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+	if _, err := c.Debug.GetHealth(context.Background()); err != nil {
+		t.Fatalf("GetHealth: %v", err)
+	}
+	if attackerSawAuth != "" {
+		t.Errorf("token leaked to redirect target: %q", attackerSawAuth)
+	}
+}
+
+// TestRedactURL_StripsQueryAndFragment verifies the helper used by the
+// HTTP logger and error formatter drops query strings and fragments.
+func TestRedactURL_StripsQueryAndFragment(t *testing.T) {
+	cases := []struct{ in, want string }{
+		{"http://bee/path?token=secret", "http://bee/path"},
+		{"http://bee/path?a=1&b=2#frag", "http://bee/path"},
+		{"http://bee/path", "http://bee/path"},
+		{"http://bee/", "http://bee/"},
+	}
+	for _, tc := range cases {
+		u, _ := url.Parse(tc.in)
+		if got := swarm.RedactURL(u); got != tc.want {
+			t.Errorf("RedactURL(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
+// TestValidateCollectionUploadOptions_RejectsCRLF ensures
+// IndexDocument/ErrorDocument with header-injection payloads error
+// out instead of silently smuggling onto the wire.
+func TestValidateCollectionUploadOptions_RejectsCRLF(t *testing.T) {
+	bad := []string{"foo\r\nX-Injected: bar", "foo\nbar", "foo\rbar", "foo\x00bar"}
+	for _, v := range bad {
+		opts := &api.CollectionUploadOptions{IndexDocument: v}
+		if err := api.ValidateCollectionUploadOptions(opts); err == nil {
+			t.Errorf("ValidateCollectionUploadOptions accepted %q", v)
+		}
+		opts = &api.CollectionUploadOptions{ErrorDocument: v}
+		if err := api.ValidateCollectionUploadOptions(opts); err == nil {
+			t.Errorf("ValidateCollectionUploadOptions accepted %q in ErrorDocument", v)
+		}
+	}
+	// Sanity: nil options and empty strings are valid.
+	if err := api.ValidateCollectionUploadOptions(nil); err != nil {
+		t.Errorf("nil opts must be valid: %v", err)
+	}
+	if err := api.ValidateCollectionUploadOptions(&api.CollectionUploadOptions{IndexDocument: "index.html"}); err != nil {
+		t.Errorf("plain index.html must be valid: %v", err)
 	}
 }

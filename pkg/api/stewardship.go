@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -52,7 +51,7 @@ func (s *Service) IsRetrievable(ctx context.Context, ref swarm.Reference) (bool,
 	var res struct {
 		IsRetrievable bool `json:"isRetrievable"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return false, err
 	}
 	return res.IsRetrievable, nil

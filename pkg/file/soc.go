@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/ecdsa"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -43,7 +42,7 @@ func (s *Service) UploadSOC(ctx context.Context, batchID swarm.BatchID, owner sw
 	var res struct {
 		Reference string `json:"reference"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return api.UploadResult{}, err
 	}
 	return api.ReadUploadResult(res.Reference, resp.Header)

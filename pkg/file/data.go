@@ -2,7 +2,6 @@ package file
 
 import (
 	"context"
-	"encoding/json"
 	"io"
 	"net/http"
 	"net/url"
@@ -75,7 +74,7 @@ func (s *Service) UploadData(ctx context.Context, batchID swarm.BatchID, data io
 	var res struct {
 		Reference string `json:"reference"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := swarm.DecodeJSONResponse(resp, &res); err != nil {
 		return api.UploadResult{}, err
 	}
 	return api.ReadUploadResult(res.Reference, resp.Header)
